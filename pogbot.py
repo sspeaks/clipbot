@@ -46,26 +46,34 @@ async def on_message(message):
         await message.channel.send(msg, embed=embed)
 
 def get_random_message(val):
-    low_rating = [f"Uh bro, you thought that was pog? It’s only a {val} on the pogmeter!",
+    low_rating = [
+                    f"Uh bro, you thought that was pog? It’s only a {val} on the pogmeter!",
                     f"Seriously bro that’s so unpog! It’s a {val} on the pogmeter!",
-                    f"Okay bro, you can pretend that was pog but its just a {val} on the pogmeter…"]
+                    f"Okay bro, you can pretend that was pog but its just a {val} on the pogmeter…"
+                 ]
 
-    medium_rating = [f"Alright bro, I’ll give it to you that’s a {val} on the pogmeter",
-                f"Gotta say that’s pretty sweet bro, it’s a {val} on the pogmeter.",
-                f"Woah bro, that’s a {val} on the pogmeter!"]
-
-
-    high_rating = [f"I never thought anything could be as pog as Chin…but that’s a {val} on the pogmeter!",
-            f"Dude…that’s more pog than Bluffkin…its a {val} on the pogmeter!",
-            f"Bro, seriously that’s the most poggiest thing ever! Its a {val} on the pogmeter!"]
+    medium_rating = [
+                        f"Alright bro, I’ll give it to you that’s a {val} on the pogmeter",
+                        f"Gotta say that’s pretty sweet bro, it’s a {val} on the pogmeter.",
+                        f"Woah bro, that’s a {val} on the pogmeter!"
+                    ]
 
 
-    multi_rating = [f"Bro, can you believe that’s like a {val} on the pogmeter?!",
-                f"Bro listen! That’s definitely a {val} on the pogmeter.",
-                f"Alright bro, hear me out. That has got to be a {val} on the pogmeter."]
+    high_rating = [
+                    f"I never thought anything could be as pog as Chin…but that’s a {val} on the pogmeter!",
+                    f"Dude…that’s more pog than Bluffkin…its a {val} on the pogmeter!",
+                    f"Bro, seriously that’s the most poggiest thing ever! Its a {val} on the pogmeter!"
+                  ]
+
+
+    multi_rating = [
+                    f"Bro, can you believe that’s like a {val} on the pogmeter?!",
+                    f"Bro listen! That’s definitely a {val} on the pogmeter.",
+                    f"Alright bro, hear me out. That has got to be a {val} on the pogmeter."
+                   ]
 
     chosen_list = low_rating if val <= 4 else medium_rating if val > 4 and val < 7 else high_rating
-    chosen_list = chosen_list + multi_rating
+    chosen_list += multi_rating
     return random.choice(chosen_list)
 
 
