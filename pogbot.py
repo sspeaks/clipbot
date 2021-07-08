@@ -1,9 +1,9 @@
-
 import os
 import json
 import random
 import discord
 from dotenv import load_dotenv
+from time import sleep
 import aiohttp
 
 
@@ -28,12 +28,17 @@ async def on_ready():
 
 @CLIENT.event
 async def on_message(message):
-    if should_process_message(message):
-        pog_choice = random.randint(1, 10)
-        msg = get_random_message(pog_choice)
-        embed = discord.Embed(colour=discord.Colour.blue())
-        embed.set_image(url=await get_random_image_url('pog', 'lame', pog_choice))
-        await message.channel.send(msg, embed=embed)
+    if should_process_pogcheck_message(message):
+        await handle_pogcheck_message(message)
+    if should_process_pogmedaddy_message(message):
+        await play_pog_file(message)
+
+async def handle_pogcheck_message(message):
+    pog_choice = random.randint(1, 10)
+    msg = get_random_message(pog_choice)
+    embed = discord.Embed(colour=discord.Colour.blue())
+    embed.set_image(url=await get_random_image_url('pog', 'lame', pog_choice))
+    await message.channel.send(msg, embed=embed)
 
 async def get_random_image_url(high_word, low_word, score):
     session = aiohttp.ClientSession()
@@ -43,7 +48,7 @@ async def get_random_image_url(high_word, low_word, score):
     await session.close()
     return data['data']['images']['original']['url']
 
-def should_process_message(message):
+def should_process_pogcheck_message(message):
     if message.author == CLIENT.user:
         return False
     if message.channel.name != 'pogcheck':
@@ -83,7 +88,29 @@ def get_random_message(val):
     chosen_list += multi_rating
     return random.choice(chosen_list)
 
+def should_process_pogmedaddy_message(message):
+    if message.author == CLIENT.user:
+        return False
+    if message.channel.name != 'pogcheck':
+        return False
+    if message.content == '!pogmedaddy':
+        return True
+    return False
+
+async def play_pog_file(message):
+    voice_channel = message.author.channel
+    if voice_channel != None:
+        vc = await voice_channel.connect()
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="/home/sspeaks/pogbot/assets/audio/pogmedaddy.mp3"))
+        while vc.is_playing():
+            sleep(.1)
+        await vc.disconnect()
+    else:
+            await message.send(str(message.author.name) + "is not in a channel.")
+    # Delete command after the audio is done playing.
+    await message.message.delete()
 
 CLIENT.run(TOKEN)
+
 #! /usr/bin/env nix-shell
-#! nmeix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp
+#! nix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp ffmpeg
