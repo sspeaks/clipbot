@@ -1,5 +1,11 @@
 { pkgs, ...} :
-let python = pkgs.python3.withPackages(ps: with ps; [ discordpy python-dotenv aiohttp ] );
+let 
+    pythonPackagesGenerated = import ./python-packages.nix {
+      inherit pkgs;
+      inherit (pkgs) fetchurl fetchgit fetchhg;
+    };
+    python = pkgs.python3.withPackages(ps: with ps; [ pythonPackagesGenerated ps ] );
+
 in
 {
 systemd.services.pogbot = {
@@ -10,6 +16,7 @@ systemd.services.pogbot = {
                 };
                 wantedBy = [ "multi-user-.target" ];
                 after = [ "network.target" ];
+                path = [ pkgs.ffmpeg ]; 
         };
 
   systemd.services.pogbot.enable = true;
