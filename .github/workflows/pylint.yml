@@ -19,4 +19,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint --disable=F0401,C0114,C0116 `ls -R|grep .py$|xargs`
+        pylint --disable=F0401,C0114,C0116,line-too-long `ls -R|grep .py$|xargs`
