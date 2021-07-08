@@ -79,7 +79,7 @@ def get_random_message(val):
         f"Alright bro, hear me out. That has got to be a {val} on the pogmeter."
         ]
 
-    chosen_list = low_rating if val <= 4 else medium_rating if val > 4 and val < 7 else high_rating
+    chosen_list = low_rating if val <= 4 else medium_rating if 4 < val < 7 else high_rating
     chosen_list += multi_rating
     return random.choice(chosen_list)
 
