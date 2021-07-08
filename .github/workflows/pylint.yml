@@ -1,6 +1,6 @@
 name: Pylint
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build:
@@ -19,4 +19,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint --disable=F0401 --disable C0116 --disable C0114 `ls -R|grep .py$|xargs`
+        pylint --disable=F0401,C0114,C0116 `ls -R|grep .py$|xargs`
