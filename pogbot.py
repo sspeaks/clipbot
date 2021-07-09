@@ -107,7 +107,7 @@ async def play_pog_file(message):
     sourcePath = random.choice(choices)
 
     # Get speed/frequency multipliers
-    sigma = 0.15
+    sigma = 0.1
     mu = 1
     [speed_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
     [frequency_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
