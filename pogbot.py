@@ -33,6 +33,8 @@ async def on_message(message):
         await handle_pogcheck_message(message)
     if should_process_pogmedaddy_message(message):
         await play_pog_file(message)
+    if should_process_help_message(message):
+        await print_help_message(message)
 
 async def handle_pogcheck_message(message):
     pog_choice = random.randint(1, 10)
@@ -113,6 +115,25 @@ async def play_pog_file(message):
             await message.author.send("You're is not in a channel. Daddy can't pog people that aren't in a channel.")
     # Delete command after the audio is done playing.
     await message.delete()
+
+def should_process_help_message(message):
+    if message.author == CLIENT.user:
+        return False
+    if message.channel.name != 'pogcheck':
+        return False
+    if message.content == '!help':
+        return True
+    return False
+
+async def print_help_message(message):
+    msg = '''
+    ```
+    !pogcheck - Returns a pog rating along with a random gif.
+    !pogmedaddy - Plays an audio file from your favorite cast of characters.
+    !help - Displays this help text.
+    ```
+    '''
+    await message.channel.send(msg)
 
 CLIENT.run(TOKEN)
 
