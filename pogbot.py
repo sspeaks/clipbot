@@ -1,5 +1,3 @@
-#! /usr/bin/env nix-shell
-#! nix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp python38Packages.pynacl ffmpeg
 import os
 import json
 import random
@@ -115,4 +113,6 @@ async def play_pog_file(message):
 
 CLIENT.run(TOKEN)
 
+#! /usr/bin/env nix-shell
+#! nix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp python38Packages.pynacl ffmpeg
 

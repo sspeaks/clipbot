@@ -1,10 +1,13 @@
 { pkgs, ...} :
 let 
+    inherit (pkgs.lib) fix extends attrValues;
     pythonPackagesGenerated = import ./python-packages.nix {
       inherit pkgs;
       inherit (pkgs) fetchurl fetchgit fetchhg;
     };
-    python = pkgs.python3.withPackages(ps: with ps; [ pythonPackagesGenerated ps ] );
+    basePythonPackages = self: pkgs.python37Packages;
+    myPackages = (fix (extends pythonPackagesGenerated basePythonPackages));
+    python = pkgs.python37.withPackages(ps: with myPackages; attrValues myPackages );
 
 in
 {
