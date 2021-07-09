@@ -99,15 +99,15 @@ def should_process_pogmedaddy_message(message):
 
 async def play_pog_file(message):
     print('pog file play hit')
-    voice_channel = message.author.voice.channel
+    voice_channel = message.author.voice
     if voice_channel != None:
-        vc = await voice_channel.connect()
+        vc = await voice_channel.channel.connect()
         vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="/home/sspeaks/pogbot/assets/audio/pogmedaddy.mp3"))
         while vc.is_playing():
             sleep(.1)
         await vc.disconnect()
     else:
-            await message.send(str(message.author.name) + "is not in a channel.")
+            await message.author.send("You're is not in a channel. Daddy can't pog people that aren't in a channel.")
     # Delete command after the audio is done playing.
     await message.delete()
 
