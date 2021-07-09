@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from time import sleep
 import aiohttp
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -98,7 +99,7 @@ def should_process_pogmedaddy_message(message):
     return False
 
 async def play_pog_file(message):
-    audioPath="assets/audio"
+    audioPath=dir_path+"/assets/audio"
     choices = [os.path.abspath(audioPath+"/"+item) for item in os.listdir(audioPath)]
     sourcePath = random.choice(choices)
     voice_channel = message.author.voice
