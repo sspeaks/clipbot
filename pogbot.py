@@ -109,7 +109,7 @@ async def play_pog_file(message):
     else:
             await message.send(str(message.author.name) + "is not in a channel.")
     # Delete command after the audio is done playing.
-    await message.message.delete()
+    await message.delete()
 
 CLIENT.run(TOKEN)
 
