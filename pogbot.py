@@ -98,7 +98,8 @@ def should_process_pogmedaddy_message(message):
     return False
 
 async def play_pog_file(message):
-    voice_channel = message.author.channel
+    print('pog file play hit')
+    voice_channel = message.author.voice.channel
     if voice_channel != None:
         vc = await voice_channel.connect()
         vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="/home/sspeaks/pogbot/assets/audio/pogmedaddy.mp3"))
@@ -108,9 +109,10 @@ async def play_pog_file(message):
     else:
             await message.send(str(message.author.name) + "is not in a channel.")
     # Delete command after the audio is done playing.
-    await message.message.delete()
+    await message.delete()
 
 CLIENT.run(TOKEN)
 
 #! /usr/bin/env nix-shell
-#! nix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp ffmpeg
+#! nix-shell -i python3 -p python3 python38Packages.discordpy python38Packages.python-dotenv python38Packages.aiohttp python38Packages.pynacl ffmpeg
+
