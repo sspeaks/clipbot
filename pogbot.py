@@ -98,10 +98,13 @@ def should_process_pogmedaddy_message(message):
     return False
 
 async def play_pog_file(message):
+    audioPath="assets/audio"
+    choices = [os.path.abspath(audioPath+"/"+item) for item in os.listdir(audioPath)]
+    sourcePath = random.choice(choices)
     voice_channel = message.author.voice
     if voice_channel != None:
         vc = await voice_channel.channel.connect()
-        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="/home/sspeaks/pogbot/assets/audio/pogmedaddy.mp3"))
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
         while vc.is_playing():
             sleep(.1)
         await vc.disconnect()
