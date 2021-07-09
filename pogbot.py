@@ -98,7 +98,6 @@ def should_process_pogmedaddy_message(message):
     return False
 
 async def play_pog_file(message):
-    print('pog file play hit')
     voice_channel = message.author.voice
     if voice_channel != None:
         vc = await voice_channel.channel.connect()
