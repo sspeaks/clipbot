@@ -1,6 +1,6 @@
 { pkgs, ...} :
 let 
-    python = pkgs.python3.withPackages(ps: with ps; [ python-dotenv aiohttp discordpy pynacl six numpy ] );
+    python = pkgs.python3.withPackages(ps: with ps; [ python-dotenv aiohttp discordpy pynacl six numpy metalogistic ] );
 
 in
 {
