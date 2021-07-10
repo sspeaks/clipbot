@@ -2,7 +2,7 @@ import os
 import json
 import random
 import discord
-import numpy
+import metalogistic
 from dotenv import load_dotenv
 from time import sleep
 import aiohttp
@@ -15,6 +15,33 @@ GUILD = os.getenv('DISCORD_GUILD')
 GIPHY_API_KEY = os.getenv('GIPHY_API_KEY')
 
 CLIENT = discord.Client()
+
+# create a random distribution for manipulating playback speed of audio clips
+# speed of audio clip is random but centered on normal speed
+speed_mean = 1.0
+
+# it is bounded
+speed_lbound = 0.5
+speed_ubound = 2.0
+
+# some percentage of all random values will be the mean
+# the remaining percentage is evenly divided to the lower and upper ranges
+speed_mean_frequency = 0.25
+
+# the distribution function is controlled by desired speeds at certain percentiles
+speed_cdf_measurements = [
+    (0.001, speed_lbound + 0.01),
+    (0.5 - speed_mean_frequency / 2.0, speed_mean - 0.001),
+    (0.50, speed_mean),
+    (0.5 + speed_mean_frequency / 2.0, speed_mean + 0.001),
+    (0.999, speed_ubound - 0.01),
+]
+
+# an object used to calculate the distribution function and sample random point
+speed_distribution = metalogistic.MetaLogistic(cdf_ps=[point[0] for point in speed_cdf_measurements], cdf_xs=[point[1] for point in speed_cdf_measurements], lbound=speed_lbound, ubound=speed_ubound)
+
+# use the same distribution for frequency manipulation too
+frequency_distribution = speed_distribution
 
 
 @CLIENT.event
@@ -107,10 +134,8 @@ async def play_pog_file(message):
     sourcePath = random.choice(choices)
 
     # Get speed/frequency multipliers
-    sigma = 0.1
-    mu = 1
-    [speed_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
-    [frequency_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
+    speed_mult = speed_distribution.rvs()
+    frequency_mult = frequency_distribution.rvs()
 
     voice_channel = message.author.voice
     if voice_channel != None:
