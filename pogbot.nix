@@ -1,13 +1,12 @@
 { pkgs, ...} :
 let 
-    python = pkgs.python3.withPackages(ps: with ps; [ python-dotenv aiohttp discordpy pynacl six numpy ] );
-
+  pogbotPackage = import ./default.nix;
 in
 {
 systemd.services.pogbot = {
                 description = "PogBot";
                 serviceConfig = {
-                        ExecStart = "${python}/bin/python /home/sspeaks/pogbot/pogbot.py";
+                        ExecStart = "${pogbotPackage}/bin/pogbot";
                         Restart = "always";
                 };
                 wantedBy = [ "multi-user-.target" ];
@@ -15,5 +14,5 @@ systemd.services.pogbot = {
                 path = [ pkgs.ffmpeg ]; 
         };
 
-  systemd.services.pogbot.enable = true;
+systemd.services.pogbot.enable = true;
 }
