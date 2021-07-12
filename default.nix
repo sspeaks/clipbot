@@ -37,15 +37,19 @@ oldPkgs = import (builtins.fetchTarball {
           sha256 = "sha256:0bp703mzfs3v0mz3qmj5j185qvn48mk0y82nmbh3pf9k5w17cv5z";
         };
         propagatedBuildInputs = [ oldPkgs.python38Packages.numpy matplotlibPkgs.python38Packages.matplotlib scipyPkgs.python38Packages.scipy ];
-    };
+      };
+   python = pkgs.python3.withPackages(ps: [metalogistic ] ++ (with ps; [ python-dotenv aiohttp discordpy pynacl six numpy scipy matplotlib]) );
 in
-  pkgs.stdenv.mkDerivation rec {
-    name = "pogbot-env";
-    # Mandatory boilerplate for buildable env
-    # this boilerplate is courtesy of Asko Soukka
-    env = pkgs.buildEnv { name = name; paths = buildInputs; };
-    builder = builtins.toFile "builder.sh" ''
-      source $stdenv/setup; ln -s $env $out
-    '';
-    buildInputs = with pkgs; [ python38 python38Packages.aiohttp python38Packages.discordpy python38Packages.python-dotenv python38Packages.six ffmpeg metalogistic ];
-  }
+ pkgs.stdenv.mkDerivation {
+      name = "pogbot";
+      buildInputs = [ python ];
+      unpackPhase = "true";
+      installPhase = ''
+        mkdir -p $out/bin
+        cp "${./.}/.env" $out/bin/.env
+        cp -r "${./assets}" $out/bin/assets
+        cp ${./pogbot.py } $out/bin/pogbot
+        chmod +x $out/bin/pogbot
+      '';
+
+}
