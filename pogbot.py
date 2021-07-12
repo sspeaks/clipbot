@@ -27,7 +27,7 @@ speed_ubound = 2.0
 
 # some percentage of all random values will be the mean
 # the remaining percentage is evenly divided to the lower and upper ranges
-speed_mean_frequency = 0.25
+speed_mean_frequency = 0.75
 
 # the distribution function is controlled by desired speeds at certain percentiles
 speed_cdf_measurements = [
