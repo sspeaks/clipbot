@@ -15,7 +15,6 @@ oldPkgs = import (builtins.fetchTarball {
         };
       in super.python38.override { inherit packageOverrides; };
     })];};
-
   matplotlibPkgs = import (import (builtins.fetchTarball {
     name = "old-numpy-version-nixpkgs";
     url = "https://github.com/nixos/nixpkgs/archive/dbcad7f7bba9585dfc14b019ddad676c410949a9.tar.gz";
@@ -27,7 +26,6 @@ oldPkgs = import (builtins.fetchTarball {
         };
       in super.python38.override { inherit packageOverrides; };
     })];};
-
     metalogistic = pkgs.python38.pkgs.buildPythonPackage rec {
         pname = "metalogistic";
         version = "0.0.4";
@@ -38,7 +36,7 @@ oldPkgs = import (builtins.fetchTarball {
         };
         propagatedBuildInputs = [ oldPkgs.python38Packages.numpy matplotlibPkgs.python38Packages.matplotlib scipyPkgs.python38Packages.scipy ];
       };
-   python = pkgs.python3.withPackages(ps: [metalogistic ] ++ (with ps; [ python-dotenv aiohttp discordpy pynacl six numpy scipy matplotlib]) );
+   python = pkgs.python3.withPackages(ps: [metalogistic] ++ (with ps; [ python-dotenv aiohttp discordpy pynacl six numpy scipy matplotlib]) );
 in
  pkgs.stdenv.mkDerivation {
       name = "pogbot";
@@ -51,5 +49,4 @@ in
         cp ${./pogbot.py } $out/bin/pogbot
         chmod +x $out/bin/pogbot
       '';
-
 }
