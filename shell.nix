@@ -39,7 +39,13 @@ oldPkgs = import (builtins.fetchTarball {
         propagatedBuildInputs = [ oldPkgs.python38Packages.numpy matplotlibPkgs.python38Packages.matplotlib scipyPkgs.python38Packages.scipy ];
     };
 in
-  pkgs.mkShell {
+  pkgs.stdenv.mkDerivation rec {
     name = "pogbot-env";
+    # Mandatory boilerplate for buildable env
+    # this boilerplate is courtesy of Asko Soukka
+    env = pkgs.buildEnv { name = name; paths = buildInputs; };
+    builder = builtins.toFile "builder.sh" ''
+      source $stdenv/setup; ln -s $env $out
+    '';
     buildInputs = with pkgs; [ python38 python38Packages.aiohttp python38Packages.discordpy python38Packages.python-dotenv python38Packages.six ffmpeg metalogistic ];
   }
