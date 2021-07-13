@@ -41,8 +41,7 @@ speed_cdf_measurements = [
 ]
 
 # an object used to calculate the distribution function and sample random point
-# speed_distribution = metalogistic.MetaLogistic(cdf_ps=[point[0] for point in speed_cdf_measurements], cdf_xs=[point[1] for point in speed_cdf_measurements], lbound=speed_lbound, ubound=speed_ubound)
-speed_distribution = metalogistic.MetaLogistic(a_vector=[-0.69446036, 2.0895905, 0.69749476, -8.08501512, -1.01150971, -1.77844091], lbound=speed_lbound, ubound=speed_ubound)
+speed_distribution = metalogistic.MetaLogistic(cdf_ps=[point[0] for point in speed_cdf_measurements], cdf_xs=[point[1] for point in speed_cdf_measurements], lbound=speed_lbound, ubound=speed_ubound)
 
 # use the same distribution for frequency manipulation too
 frequency_distribution = speed_distribution
