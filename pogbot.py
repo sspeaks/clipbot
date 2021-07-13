@@ -2,8 +2,6 @@
 import os
 import json
 import random
-
-from numpy import lib
 import discord
 import metalogistic
 from dotenv import load_dotenv
