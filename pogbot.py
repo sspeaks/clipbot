@@ -2,6 +2,8 @@
 import os
 import json
 import random
+
+from numpy import lib
 import discord
 import metalogistic
 from dotenv import load_dotenv
@@ -27,19 +29,22 @@ speed_ubound = 2.0
 
 # some percentage of all random values will be the mean
 # the remaining percentage is evenly divided to the lower and upper ranges
-speed_mean_frequency = 0.75
+speed_mean_frequency = 0.25
 
 # the distribution function is controlled by desired speeds at certain percentiles
 speed_cdf_measurements = [
     (0.001, speed_lbound + 0.01),
-    (0.5 - speed_mean_frequency / 2.0, speed_mean - 0.001),
+    (0.5 - speed_mean_frequency / 2.0, speed_mean),
+    (0.5 - speed_mean_frequency / 3.0, speed_mean),
     (0.50, speed_mean),
-    (0.5 + speed_mean_frequency / 2.0, speed_mean + 0.001),
+    (0.5 + speed_mean_frequency / 3.0, speed_mean),
+    (0.5 + speed_mean_frequency / 2.0, speed_mean),
     (0.999, speed_ubound - 0.01),
 ]
 
 # an object used to calculate the distribution function and sample random point
-speed_distribution = metalogistic.MetaLogistic(cdf_ps=[point[0] for point in speed_cdf_measurements], cdf_xs=[point[1] for point in speed_cdf_measurements], lbound=speed_lbound, ubound=speed_ubound)
+# speed_distribution = metalogistic.MetaLogistic(cdf_ps=[point[0] for point in speed_cdf_measurements], cdf_xs=[point[1] for point in speed_cdf_measurements], lbound=speed_lbound, ubound=speed_ubound)
+speed_distribution = metalogistic.MetaLogistic(a_vector=[-0.69446036, 2.0895905, 0.69749476, -8.08501512, -1.01150971, -1.77844091], lbound=speed_lbound, ubound=speed_ubound)
 
 # use the same distribution for frequency manipulation too
 frequency_distribution = speed_distribution
