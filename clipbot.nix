@@ -1,12 +1,12 @@
 { pkgs, ...} :
 let 
-  pogbotPackage = import ./default.nix;
+  clipbotPackage = import ./default.nix;
 in
 {
-systemd.services.pogbot = {
-                description = "PogBot";
+systemd.services.clipbot = {
+                description = "ClipBot";
                 serviceConfig = {
-                        ExecStart = "${pogbotPackage}/bin/pogbot";
+                        ExecStart = "${clipbotPackage}/bin/clipbot";
                         Restart = "always";
                         RestartSec = 1;
                 };
@@ -15,5 +15,5 @@ systemd.services.pogbot = {
                 path = [ pkgs.ffmpeg ]; 
         };
 
-systemd.services.pogbot.enable = true;
+systemd.services.clipbot.enable = true;
 }
