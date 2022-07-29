@@ -2,6 +2,7 @@ import os
 import json
 import random
 import discord
+import numpy
 from dotenv import load_dotenv
 from time import sleep
 import aiohttp
@@ -104,10 +105,18 @@ async def play_pog_file(message):
     audioPath=dir_path+"/assets/audio"
     choices = [os.path.abspath(audioPath+"/"+item) for item in os.listdir(audioPath)]
     sourcePath = random.choice(choices)
+
+    # Get speed/frequency multipliers
+    sigma = 0.15
+    mu = 1
+    [speed_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
+    [frequency_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
+    aug_speed_mult = numpy.clip(speed_mult * (1/frequency_mult), 0.5, 2)
+
     voice_channel = message.author.voice
     if voice_channel != None:
         vc = await voice_channel.channel.connect()
-        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath, options=f'-filter:a "atempo='+str(aug_speed_mult)+',asetrate=44100*'+str(frequency_mult)+'"'))
         while vc.is_playing():
             sleep(.1)
         await vc.disconnect()
