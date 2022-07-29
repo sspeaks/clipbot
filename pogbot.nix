@@ -8,6 +8,7 @@ systemd.services.pogbot = {
                 serviceConfig = {
                         ExecStart = "${pogbotPackage}/bin/pogbot";
                         Restart = "always";
+                        RestartSec = 1;
                 };
                 wantedBy = [ "multi-user-.target" ];
                 after = [ "network.target" ];
