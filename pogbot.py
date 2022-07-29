@@ -9,13 +9,23 @@ import aiohttp
 import numpy
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-
+print(dir_path)
 load_dotenv()
+print("loaded env")
 TOKEN = os.getenv('DISCORD_TOKEN')
+print(TOKEN)
 GUILD = os.getenv('DISCORD_GUILD')
+print(GUILD)
 GIPHY_API_KEY = os.getenv('GIPHY_API_KEY')
+print(GIPHY_API_KEY)
 
 CLIENT = discord.Client()
+
+@CLIENT.event
+async def on_connect():
+    print("CONNECTED!")
+    print(CLIENT.guilds)
+
 
 @CLIENT.event
 async def on_ready():
@@ -55,8 +65,8 @@ async def get_random_image_url(high_word, low_word, score):
 def should_process_pogcheck_message(message):
     if message.author == CLIENT.user:
         return False
-    if message.channel.name != 'pogcheck':
-        return False
+#    if message.channel.name != 'pogcheck':
+ #       return False
     if message.content == '!pogcheck':
         return True
     return False
@@ -95,13 +105,16 @@ def get_random_message(val):
 def should_process_pogmedaddy_message(message):
     if message.author == CLIENT.user:
         return False
-    if message.channel.name != 'pogcheck':
-        return False
+  #  if message.channel.name != 'pogcheck':
+   #     return False
     if message.content == '!pogmedaddy':
         return True
     return False
 
 async def play_pog_file(message):
+    for vc in CLIENT.voice_clients:
+        vc.disconnect()
+        sleep(0.5)
     audioPath=dir_path+"/assets/audio"
     choices = [os.path.abspath(audioPath+"/"+item) for item in os.listdir(audioPath)]
     sourcePath = random.choice(choices)
@@ -127,8 +140,8 @@ async def play_pog_file(message):
 def should_process_help_message(message):
     if message.author == CLIENT.user:
         return False
-    if message.channel.name != 'pogcheck':
-        return False
+    #if message.channel.name != 'pogcheck':
+     #   return False
     if message.content == '!help':
         return True
     return False

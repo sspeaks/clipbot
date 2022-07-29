@@ -8,7 +8,7 @@ in
       installPhase = ''
         mkdir -p $out/bin
         cp "${./.}/.env" $out/bin/.env
-        cp -r "${./assets}" $out/bin/assets
+        ln -s "/home/sspeaks/pogbot/assets" $out/bin/assets
         cp ${./pogbot.py } $out/bin/pogbot
         chmod +x $out/bin/pogbot
       '';
