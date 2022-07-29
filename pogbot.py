@@ -111,12 +111,11 @@ async def play_pog_file(message):
     mu = 1
     [speed_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
     [frequency_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
-    aug_speed_mult = numpy.clip(speed_mult * (1/frequency_mult), 0.5, 2)
 
     voice_channel = message.author.voice
     if voice_channel != None:
         vc = await voice_channel.channel.connect()
-        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath, options=f'-filter:a "atempo='+str(aug_speed_mult)+',asetrate=44100*'+str(frequency_mult)+'"'))
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath, options=f'-filter:a "atempo='+str(1/frequency_mult)+',asetrate=44100*'+str(frequency_mult)+',atempo='+str(speed_mult)+'"'))
         while vc.is_playing():
             sleep(.1)
         await vc.disconnect()
