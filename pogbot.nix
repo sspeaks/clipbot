@@ -1,5 +1,7 @@
 { pkgs, ...} :
-let python = pkgs.python3.withPackages(ps: with ps; [ discordpy python-dotenv aiohttp ] );
+let 
+    python = pkgs.python3.withPackages(ps: with ps; [ python-dotenv aiohttp discordpy pynacl six ] );
+
 in
 {
 systemd.services.pogbot = {
@@ -10,6 +12,7 @@ systemd.services.pogbot = {
                 };
                 wantedBy = [ "multi-user-.target" ];
                 after = [ "network.target" ];
+                path = [ pkgs.ffmpeg ]; 
         };
 
   systemd.services.pogbot.enable = true;
