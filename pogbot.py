@@ -26,24 +26,28 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    print(message.channel.name)
-    if message.author == client.user:
-        return
-    if message.channel.name != 'pogcheck':
-        return
-    if message.content == '!pogcheck':
-        embed = discord.Embed(colour=discord.Colour.blue())
-        session = aiohttp.ClientSession()
-
-        response = await session.get(f'http://api.giphy.com/v1/gifs/random?tag=pog&api_key={GIPHY_API_KEY}')
-        print(response.text())
-        data = json.loads(await response.text())
-        embed.set_image(url=data['data']['images']['original']['url'])
-        await session.close()
-
+    if should_process_message(message):
         pog_choice = random.randint(1,10)
         msg = get_random_message(pog_choice)
+        embed = discord.Embed(colour=discord.Colour.blue())
+        embed.set_image(url=await get_random_image_url('pog', 'lame', pog_choice))
         await message.channel.send(msg, embed=embed)
+
+async def get_random_image_url(high_word, low_word, score):
+    session = aiohttp.ClientSession()
+    keyword = high_word if score > 5 else low_word
+    response = await session.get(f'http://api.giphy.com/v1/gifs/random?tag={keyword}&api_key={GIPHY_API_KEY}')
+    data = json.loads(await response.text())
+    await session.close()
+    return data['data']['images']['original']['url']
+ 
+def should_process_message(message):
+    if message.author == client.user:
+        return False 
+    if message.channel.name != 'pogcheck':
+        return False
+    if message.content == '!pogcheck':
+        return True
 
 def get_random_message(val):
     low_rating = [
