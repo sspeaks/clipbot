@@ -7,6 +7,39 @@ from dotenv import load_dotenv
 from time import sleep
 import aiohttp
 import numpy
+import re
+from azure.identity import DefaultAzureCredential
+from azure.data.tables import TableServiceClient
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass
+class TokenUsage:
+    RowKey: str
+    PartitionKey: str
+    token_usage: int = 0
+    last_usage: float = datetime.now().timestamp()
+
+
+try:
+    account_url = "https://pogbot.table.core.windows.net/"
+    default_credential = DefaultAzureCredential()
+
+    # Create the BlobServiceClient object
+    service = TableServiceClient(endpoint=account_url, credential=default_credential)
+
+    table_name = "tokenUsages"
+    try:
+        service.create_table(table_name)
+        print("Table created!")
+    except Exception as e:
+        print("Table failed to create: " + e)
+
+except Exception as ex:
+    print("Exception:")
+    print(ex)
+    exit()
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 print(dir_path)
@@ -41,14 +74,36 @@ async def on_ready():
 
 @CLIENT.event
 async def on_message(message):
+    if message.author != CLIENT.user and re.search(
+        "pog", message.content, flags=re.IGNORECASE
+    ):
+        await message.add_reaction("<:mentos:1044740202947678228>")
     if should_process_pogcheck_message(message):
         await handle_pogcheck_message(message)
+        return
     if should_process_pogmedaddy_message(message):
         await play_pog_file(message)
+        return
     if should_process_help_message(message):
         await print_help_message(message)
+        return
     if should_process_better_mage(message):
         await process_better_mage(message)
+        return
+    if should_process_get_files(message):
+        await process_get_files(message)
+        return
+
+
+def should_process_get_files(message):
+    print(message.channel)
+    return True
+
+
+async def process_get_files(message):
+    audioPath = dir_path + "/assets/audio"
+    choices = "\n".join([item for item in os.listdir(audioPath)])
+    message.channel.send(choices)
 
 
 async def handle_pogcheck_message(message):
@@ -122,6 +177,22 @@ def should_process_pogmedaddy_message(message):
     return False
 
 
+async def play_unmodified_audio_file(message, sourcePath):
+    voice_channel = message.author.voice
+    if voice_channel != None:
+        vc = await voice_channel.channel.connect()
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
+        while vc.is_playing():
+            sleep(0.1)
+        await vc.disconnect()
+    else:
+        await message.author.send(
+            "You're is not in a channel. Daddy can't pog people that aren't in a channel."
+        )
+    # Delete command after the audio is done playing.
+    await message.delete()
+
+
 async def play_pog_file(message):
     for vc in CLIENT.voice_clients:
         vc.disconnect()
@@ -176,18 +247,30 @@ def should_process_help_message(message):
 
 
 def should_process_better_mage(message):
-    if message.author == CLIENT.user:
-        return False
+    # if message.author == CLIENT.user:
+    #     return False
     if message.content == "!bettermage":
         return True
     return False
 
 
 async def process_better_mage(message):
-    msg = "Who's the better mage??? Isn't it obvious? Nolorra!!!"
+    msg = get_random_mage_message()
     im_path = dir_path + "/assets/nolorra_better.png"
+    audioPath = dir_path + "/assets/AndHisNameIs.mp3"
     file = discord.File(im_path)
     await message.channel.send(msg, file=file)
+    await play_unmodified_audio_file(message, audioPath)
+
+
+def get_random_mage_message():
+    better_mage_message = [
+        "Who's the better mage??? Isn't it obvious? Nolorra!!!",
+        "Some say he quit playing mage because he was too damn good at it.... the legendary Nolorra, of course!",
+        '"When you don\'t want to make other players feel consistently inadequate, sometimes you must give up great things" -- Daisy 2022',
+        "If it's opposite day, the answer is Bluffkin. If it's not... well, you know",
+    ]
+    return random.choice(better_mage_message)
 
 
 async def print_help_message(message):
