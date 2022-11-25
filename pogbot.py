@@ -1,4 +1,4 @@
-#!/user/bin/env python
+#!/usr/bin/env python
 import os
 import json
 import random
@@ -9,17 +9,19 @@ import aiohttp
 import numpy
 import re
 from azure.identity import DefaultAzureCredential
-from azure.data.tables import TableServiceClient
-from dataclasses import dataclass
+from azure.data.tables import TableServiceClient, UpdateMode
+from dataclasses import dataclass, asdict
 from datetime import datetime
 
 
 @dataclass
 class TokenUsage:
     RowKey: str
-    PartitionKey: str
-    token_usage: int = 0
-    last_usage: float = datetime.now().timestamp()
+    PartitionKey: str = str(datetime.now().timestamp())
+    tokens: int = 1
+    tokensSpent: int = 0
+    giftedTokens: int = 5
+    last_usage: float = 1669190400.0
 
 
 try:
@@ -34,7 +36,9 @@ try:
         service.create_table(table_name)
         print("Table created!")
     except Exception as e:
-        print("Table failed to create: " + e)
+        pass
+    table_client = service.get_table_client(table_name=table_name)
+
 
 except Exception as ex:
     print("Exception:")
@@ -53,6 +57,7 @@ GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
 print(GIPHY_API_KEY)
 
 CLIENT = discord.Client()
+# CLIENT = discord.Client(intents=discord.Intents.default())
 
 
 @CLIENT.event
@@ -93,17 +98,103 @@ async def on_message(message):
     if should_process_get_files(message):
         await process_get_files(message)
         return
+    if should_process_play_file(message):
+        await play_file(message, get_updated_tokens_for_user(message.author))
+        return
+
+
+def should_process_play_file(message):
+    if message.author == CLIENT.user:
+        return False
+    if str(message.channel) != "poggers":
+        return False
+    if re.search("!play", str(message.content)) is None:
+        # print(message)
+        return False
+    return True
+
+
+async def play_file(message, tokens):
+    if tokens < 1:
+        await message.channel.send(
+            f"You have {tokens} tokens left and can't play a clip <:mentos:1044740202947678228>"
+        )
+    else:
+        m = re.search("^!play (.+)", message.content)
+        if m:
+            fileName = m.group(1)
+            audioPath = dir_path + "/assets/audio"
+            choices = list([item for item in os.listdir(audioPath)])
+            if fileName in choices:
+                if await play_unmodified_audio_file(
+                    message, audioPath + "/" + fileName
+                ):
+                    remove_one_token_from_user(message.author)
+                    await message.channel.send(
+                        f"File played! You have {tokens - 1} tokens left. You'll get another one in a week!"
+                    )
+            else:
+                await message.channel.send(
+                    f"'{fileName}' is not a valid file. To see a list of files, type !files in a private message with Pogbot"
+                )
+        else:
+            # await message.channel.send("You need to type !play \{filename\}")
+            await message.channel.send("You need to type !play {filename}")
 
 
 def should_process_get_files(message):
-    print(message.channel)
+    if message.author == CLIENT.user:
+        return False
+    # Direct Message with Bloodfox610#8162
+    if re.search("^Direct Message", str(message.channel)) is None:
+        return False
+    if message.content != "!files":
+        return False
     return True
+
+
+def get_entity_from_user(user):
+    user_filter = f"RowKey eq '{user.name}'"
+    entities = list(table_client.query_entities(user_filter))
+    entity = None
+    if len(entities) != 1:
+        entity = TokenUsage(RowKey=user.name)
+    else:
+        [temp_entity] = entities
+        entity = TokenUsage(**dict(temp_entity))
+    return entity
+
+
+def remove_one_token_from_user(user):
+    entity = get_entity_from_user(user)
+    if entity.giftedTokens > 0:
+        entity.giftedTokens -= 1
+    else:
+        entity.tokens -= 1
+        entity.tokensSpent += 1
+    update_entity(entity)
+
+
+def update_entity(entity):
+    table_client.upsert_entity(mode=UpdateMode.REPLACE, entity=asdict(entity))
+
+
+def get_updated_tokens_for_user(user):
+    entity = get_entity_from_user(user)
+    old_usage = datetime.fromtimestamp(entity.last_usage)
+    new_usage = datetime.now()
+    weeks = (new_usage - old_usage).days // 7
+    total_tokens = entity.tokens + entity.tokensSpent
+    if total_tokens <= weeks + 1:  # Less than or equal to so I can gift people tokens
+        entity.tokens = (weeks + 1) - entity.tokensSpent
+    update_entity(entity)
+    return entity.tokens + entity.giftedTokens
 
 
 async def process_get_files(message):
     audioPath = dir_path + "/assets/audio"
     choices = "\n".join([item for item in os.listdir(audioPath)])
-    message.channel.send(choices)
+    await message.channel.send(choices)
 
 
 async def handle_pogcheck_message(message):
@@ -183,14 +274,16 @@ async def play_unmodified_audio_file(message, sourcePath):
         vc = await voice_channel.channel.connect()
         vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
         while vc.is_playing():
-            sleep(0.1)
+            sleep(0.5)
         await vc.disconnect()
+        return True
     else:
         await message.author.send(
             "You're is not in a channel. Daddy can't pog people that aren't in a channel."
         )
+        return False
     # Delete command after the audio is done playing.
-    await message.delete()
+    # await message.delete()
 
 
 async def play_pog_file(message):
@@ -279,6 +372,8 @@ async def print_help_message(message):
     !pogcheck - Returns a pog rating along with a random gif.
     !pogmedaddy - Plays an audio file from your favorite cast of characters.
     !help - Displays this help text.
+    !files - Lists clips that can be played with !play **MUST BE IN PRIVATE MESSAGE WITH POGBOT**
+
     ```
     """
     await message.channel.send(msg)
