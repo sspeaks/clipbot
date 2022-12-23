@@ -13,16 +13,14 @@ from azure.data.tables import TableServiceClient, UpdateMode
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-
 @dataclass
 class TokenUsage:
     RowKey: str
     PartitionKey: str = str(datetime.now().timestamp())
     tokens: int = 1
     tokensSpent: int = 0
-    giftedTokens: int = 5
+    giftedTokens: int = 50
     last_usage: float = 1669190400.0
-
 
 try:
     account_url = "https://pogbot.table.core.windows.net/"
@@ -38,7 +36,6 @@ try:
     except Exception as e:
         pass
     table_client = service.get_table_client(table_name=table_name)
-
 
 except Exception as ex:
     print("Exception:")
@@ -59,12 +56,10 @@ print(GIPHY_API_KEY)
 CLIENT = discord.Client()
 # CLIENT = discord.Client(intents=discord.Intents.default())
 
-
 @CLIENT.event
 async def on_connect():
     print("CONNECTED!")
     print(CLIENT.guilds)
-
 
 @CLIENT.event
 async def on_ready():
@@ -75,7 +70,6 @@ async def on_ready():
                 f"{guild.name}(id: {guild.id})"
             )
             break
-
 
 @CLIENT.event
 async def on_message(message):
@@ -102,17 +96,15 @@ async def on_message(message):
         await play_file(message, get_updated_tokens_for_user(message.author))
         return
 
-
 def should_process_play_file(message):
     if message.author == CLIENT.user:
         return False
     if str(message.channel) != "poggers":
         return False
-    if re.search("!play", str(message.content)) is None:
+    if re.search("!playclip", str(message.content)) is None:
         # print(message)
         return False
     return True
-
 
 async def play_file(message, tokens):
     if tokens < 1:
@@ -120,7 +112,7 @@ async def play_file(message, tokens):
             f"You have {tokens} tokens left and can't play a clip <:mentos:1044740202947678228>"
         )
     else:
-        m = re.search("^!play (.+)", message.content)
+        m = re.search("^!playclip\s+(.+)", message.content)
         if m:
             fileName = m.group(1)
             audioPath = dir_path + "/assets/audio"
@@ -139,8 +131,7 @@ async def play_file(message, tokens):
                 )
         else:
             # await message.channel.send("You need to type !play \{filename\}")
-            await message.channel.send("You need to type !play {filename}")
-
+            await message.channel.send("You need to type !playclip {filename}")
 
 def should_process_get_files(message):
     if message.author == CLIENT.user:
@@ -151,7 +142,6 @@ def should_process_get_files(message):
     if message.content != "!files":
         return False
     return True
-
 
 def get_entity_from_user(user):
     user_filter = f"RowKey eq '{user.name}'"
@@ -164,7 +154,6 @@ def get_entity_from_user(user):
         entity = TokenUsage(**dict(temp_entity))
     return entity
 
-
 def remove_one_token_from_user(user):
     entity = get_entity_from_user(user)
     if entity.giftedTokens > 0:
@@ -174,10 +163,8 @@ def remove_one_token_from_user(user):
         entity.tokensSpent += 1
     update_entity(entity)
 
-
 def update_entity(entity):
     table_client.upsert_entity(mode=UpdateMode.REPLACE, entity=asdict(entity))
-
 
 def get_updated_tokens_for_user(user):
     entity = get_entity_from_user(user)
@@ -190,12 +177,29 @@ def get_updated_tokens_for_user(user):
     update_entity(entity)
     return entity.tokens + entity.giftedTokens
 
-
 async def process_get_files(message):
+    header = """
+The files are returned in descending order of date added (most recent are at the top).
+They are also sent in multiple batches because a discord message cannot exceed 2000 characters in length.
+    """
+    await message.channel.send(header)
     audioPath = dir_path + "/assets/audio"
-    choices = "\n".join([item for item in os.listdir(audioPath)])
-    await message.channel.send(choices)
-
+    full_path_choice = [os.path.join(audioPath, item) for item in os.listdir(audioPath)]
+    full_path_choice.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    path_len = len(audioPath) + 1
+    choices = [x[path_len:] for x in full_path_choice]
+    if sum(map(lambda x: len(x), choices)) + len(choices) < 2000:
+        await message.channel.send(choices)
+    else:
+        message_items = []
+        for i in range(0, len(choices)):
+            choice = choices[i]
+            if len("\n".join(message_items)) + 1 + len(choice) >= 2000:
+                await message.channel.send("\n".join(message_items))
+                message_items = [choice]
+            else:
+                message_items.append(choice)
+        await message.channel.send("\n".join(message_items))
 
 async def handle_pogcheck_message(message):
     pog_choice = random.randint(1, 10)
@@ -203,7 +207,6 @@ async def handle_pogcheck_message(message):
     embed = discord.Embed(colour=discord.Colour.blue())
     embed.set_image(url=await get_random_image_url("pog", "lame", pog_choice))
     await message.channel.send(msg, embed=embed)
-
 
 async def get_random_image_url(high_word, low_word, score):
     session = aiohttp.ClientSession()
@@ -215,7 +218,6 @@ async def get_random_image_url(high_word, low_word, score):
     await session.close()
     return data["data"]["images"]["original"]["url"]
 
-
 def should_process_pogcheck_message(message):
     if message.author == CLIENT.user:
         return False
@@ -224,7 +226,6 @@ def should_process_pogcheck_message(message):
     if message.content == "!pogcheck":
         return True
     return False
-
 
 def get_random_message(val):
     low_rating = [
@@ -257,7 +258,6 @@ def get_random_message(val):
     chosen_list += multi_rating
     return random.choice(chosen_list)
 
-
 def should_process_pogmedaddy_message(message):
     if message.author == CLIENT.user:
         return False
@@ -266,7 +266,6 @@ def should_process_pogmedaddy_message(message):
     if message.content == "!pogmedaddy":
         return True
     return False
-
 
 async def play_unmodified_audio_file(message, sourcePath):
     voice_channel = message.author.voice
@@ -284,7 +283,6 @@ async def play_unmodified_audio_file(message, sourcePath):
         return False
     # Delete command after the audio is done playing.
     # await message.delete()
-
 
 async def play_pog_file(message):
     for vc in CLIENT.voice_clients:
@@ -328,7 +326,6 @@ async def play_pog_file(message):
     # Delete command after the audio is done playing.
     await message.delete()
 
-
 def should_process_help_message(message):
     if message.author == CLIENT.user:
         return False
@@ -338,14 +335,12 @@ def should_process_help_message(message):
         return True
     return False
 
-
 def should_process_better_mage(message):
     # if message.author == CLIENT.user:
     #     return False
     if message.content == "!bettermage":
         return True
     return False
-
 
 async def process_better_mage(message):
     msg = get_random_mage_message()
@@ -354,7 +349,6 @@ async def process_better_mage(message):
     file = discord.File(im_path)
     await message.channel.send(msg, file=file)
     await play_unmodified_audio_file(message, audioPath)
-
 
 def get_random_mage_message():
     better_mage_message = [
@@ -365,19 +359,17 @@ def get_random_mage_message():
     ]
     return random.choice(better_mage_message)
 
-
 async def print_help_message(message):
     msg = """
     ```
     !pogcheck - Returns a pog rating along with a random gif.
     !pogmedaddy - Plays an audio file from your favorite cast of characters.
     !help - Displays this help text.
-    !files - Lists clips that can be played with !play **MUST BE IN PRIVATE MESSAGE WITH POGBOT**
+    !files - Lists clips that can be played with !playclip **MUST BE IN PRIVATE MESSAGE WITH POGBOT**
 
     ```
     """
     await message.channel.send(msg)
-
 
 CLIENT.run(TOKEN)
 
