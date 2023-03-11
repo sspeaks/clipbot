@@ -19,9 +19,26 @@ let pkgs = import <nixpkgs> {};
 
       pythonImportsCheck = [ "azure.data.tables" ];
     };
+    openai = pkgs.python39Packages.buildPythonPackage rec {
+      pname = "openai";
+      version = "0.27.1";
+      
+      src = pkgs.python39Packages.fetchPypi {
+        inherit pname version;
+        extension = "tar.gz";
+        sha256 = "11a8eb9b609653295be6cc67febecd5189f17b22ef015462c5003d8959567fd7";
+      };
+
+      propagatedBuildInputs = with pkgs.python39Packages; [ aiohttp requests tqdm ];
+
+      doCheck = false;
+
+      pythonImportsCheck = [ "openai" ];
+    };
+
     python = pkgs.python39.withPackages(ps: (with ps; [
       python-dotenv aiohttp discordpy pynacl six numpy azure-identity
-     ]) ++ [ auzre-data-tables ] );
+     ]) ++ [ auzre-data-tables openai ] );
 
 in
  pkgs.stdenv.mkDerivation {

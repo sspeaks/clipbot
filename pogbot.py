@@ -54,9 +54,15 @@ GUILD = os.getenv("DISCORD_GUILD")
 print(GUILD)
 GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
 print(GIPHY_API_KEY)
+OPEN_AI_API = os.getenv("OPEN_AI_API")
+
+import openai
+openai.api_key = OPEN_AI_API
 
 CLIENT = discord.Client()
-# CLIENT = discord.Client(intents=discord.Intents.default())
+#intents = discord.Intents.default()
+#intents.message_content = True
+#CLIENT = discord.Client(intents=intents)
 
 
 @CLIENT.event
@@ -105,6 +111,26 @@ async def on_message(message):
             message, get_updated_tokens_for_user(message.author)
         )
         return
+    if should_process_chat_command(message):
+        await process_chat_command(message)
+        return
+
+def should_process_chat_command(message):
+    if message.author == CLIENT.user:
+        return False
+    if str(message.channel) != "poggers":
+        return False
+    if re.search("!chat", str(message.content)) is None:
+#        print(message.content)
+        return False
+    return True
+
+async def process_chat_command(message):
+    query = message.content
+ #   print(query)
+    completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": query}])
+    content = completion.choices[0].message.content
+    await message.channel.send(content)
 
 
 def should_process_tokens_command(message):
