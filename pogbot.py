@@ -114,6 +114,39 @@ async def on_message(message):
     if should_process_chat_command(message):
         await process_chat_command(message)
         return
+    if should_process_image_command(message):
+        await process_image_command(message)
+
+async def process_image_command(message):
+    m = re.search("^!playclip\s+(.+)", message.content)
+    query = message.content
+    if m:
+        query = m.group(1)
+
+    response = openai.Image.create(
+        prompt=query,
+        n=1,
+        size="1024x1024"
+       )
+    image_url = response['data'][0]['url']
+    embed = discord.Embed(colour=discord.Colour.blue())
+    embed.set_image(url=image_url)
+    await message.channel.send("", embed=embed)
+
+
+
+
+def should_process_image_command(message):
+    if message.author == CLIENT.user:
+        return False
+    if str(message.channel) != "poggers":
+        return False
+    if re.search("!image", str(message.content)) is None:
+#        print(message.content)
+        return False
+    return True
+
+
 
 def should_process_chat_command(message):
     if message.author == CLIENT.user:
