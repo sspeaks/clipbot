@@ -126,9 +126,17 @@ def should_process_chat_command(message):
     return True
 
 async def process_chat_command(message):
+    m = re.search("^!playclip\s+(.+)", message.content)
     query = message.content
+    if m:
+        query = m.group(1)
+
  #   print(query)
-    completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": query}])
+    completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
+                                                           messages=[{"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
+                                                                     {"role": "user", "content": "please replace all nouns with \"Bluffkin\""},
+                                                                     {"role": "assistant", "content": "Sure thing! I'll try to incorporate \"Bluffkin\" in my answers as much as possible. Let's have some fun!"},
+                                                                     {"role": "user", "content": query}])
     content = completion.choices[0].message.content
     await message.channel.send(content)
 
