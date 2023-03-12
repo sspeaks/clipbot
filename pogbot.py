@@ -134,11 +134,33 @@ async def process_chat_command(message):
  #   print(query)
     completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
                                                            messages=[{"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
-                                                                     {"role": "user", "content": "please replace all nouns with \"Bluffkin\""},
-                                                                     {"role": "assistant", "content": "Sure thing! I'll try to incorporate \"Bluffkin\" in my answers as much as possible. Let's have some fun!"},
+                                                                     {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
+                                                                     {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
                                                                      {"role": "user", "content": query}])
     content = completion.choices[0].message.content
-    await message.channel.send(content)
+
+    messages = splitIntoChunks(content)
+    for m in messages:
+        await message.channel.send(m)
+
+def splitIntoChunks(inp, sep='\n', limit = 2000):
+    ray = inp.split(sep)
+
+    result = []
+
+    temp = []
+    for item in ray:
+        curLen = len('\n'.join(temp))
+        if curLen + len(item) + 1 < limit:
+            temp.append(item)
+        else:
+            result.append('\n'.join(temp))
+            temp = [item]
+    if len(temp) > 0:
+        result.append('\n'.join(temp))
+    return result
+
+
 
 
 def should_process_tokens_command(message):
