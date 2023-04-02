@@ -12,7 +12,8 @@ from azure.identity import DefaultAzureCredential
 from azure.data.tables import TableServiceClient, UpdateMode
 from dataclasses import dataclass, asdict
 from datetime import datetime
-
+print(os.environ["LD_LIBRARY_PATH"])
+os.environ['LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
 
 @dataclass
 class TokenUsage:
@@ -63,6 +64,7 @@ openai.api_key = OPEN_AI_API
 intents = discord.Intents.default()
 intents.message_content = True
 CLIENT = discord.Client(intents=intents)
+discord.opus.load_opus("libopus.so")
 
 
 @CLIENT.event
@@ -417,7 +419,6 @@ async def play_unmodified_audio_file(message, sourcePath):
 
 
 async def play_pog_file(message):
-    print("Tryna play pog file")
     for vc in CLIENT.voice_clients:
         vc.disconnect()
         sleep(0.5)
@@ -426,7 +427,6 @@ async def play_pog_file(message):
         os.path.abspath(audioPath + "/" + item) for item in os.listdir(audioPath)
     ]
     sourcePath = random.choice(choices)
-    print("Playing " + sourcePath)
 
     # Get speed/frequency multipliers
     sigma = 0.1
@@ -437,7 +437,6 @@ async def play_pog_file(message):
     voice_channel = message.author.voice
     if voice_channel != None:
         vc = await voice_channel.channel.connect()
-        print("Before play")
         vc.play(
             discord.FFmpegPCMAudio(
                 executable="ffmpeg",
@@ -451,10 +450,8 @@ async def play_pog_file(message):
                 + '"',
             )
         )
-        print("after play")
         while vc.is_playing():
             sleep(0.1)
-            print("while loop")
         await vc.disconnect()
     else:
         await message.author.send(
