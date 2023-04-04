@@ -121,7 +121,7 @@ async def on_message(message):
         return
 
 async def process_image_command(message):
-    m = re.search("^!playclip\s+(.+)", message.content)
+    m = re.search(r"^!playclip\s+(.+)", message.content)
     query = message.content
     if m:
         query = m.group(1)
@@ -162,7 +162,7 @@ def should_process_chat_command(message):
     return True
 
 async def process_chat_command(message):
-    m = re.search("^!playclip\s+(.+)", message.content)
+    m = re.search(r"^!playclip\s+(.+)", message.content)
     query = message.content
     if m:
         query = m.group(1)
@@ -233,7 +233,7 @@ async def play_file(message, tokens):
             f"You have {tokens} tokens left and can't play a clip <:mentos:1044740202947678228>"
         )
     else:
-        m = re.search("^!playclip\s+(.+)", message.content)
+        m = re.search(r"^!playclip\s+(.+)", message.content)
         if m:
             fileName = m.group(1)
             audioPath = dir_path + "/assets/audio"
