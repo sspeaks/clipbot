@@ -169,9 +169,10 @@ async def process_chat_command(message):
 
  #   print(query)
     completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
-                                                           messages=[{"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
-                                                                     {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
-                                                                     {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
+                                                           messages=[ {"role": "system", "content": "You are a helpful assistant who tries to answer questions to the best of your ability."},
+                                                                    # {"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
+                                                                    #  {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
+                                                                    #  {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
                                                                      {"role": "user", "content": query}])
     content = completion.choices[0].message.content
 
