@@ -10,10 +10,15 @@ import numpy
 import re
 from azure.identity import DefaultAzureCredential
 from azure.data.tables import TableServiceClient, UpdateMode
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from dataclasses import dataclass, asdict
 from datetime import datetime
+import tempfile
+import requests
+
 print(os.environ["LD_LIBRARY_PATH"])
-os.environ['LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
+os.environ["LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
+
 
 @dataclass
 class TokenUsage:
@@ -26,19 +31,25 @@ class TokenUsage:
 
 
 try:
-    account_url = "https://pogbot.table.core.windows.net/"
+    table_account_url = "https://pogbot.table.core.windows.net/"
+    blob_account_url = "https://pogbot.blob.core.windows.net/"
     default_credential = DefaultAzureCredential()
 
     # Create the BlobServiceClient object
-    service = TableServiceClient(endpoint=account_url, credential=default_credential)
+    tableService = TableServiceClient(
+        endpoint=table_account_url, credential=default_credential
+    )
+    blobService = BlobServiceClient(blob_account_url, credential=default_credential)
 
+    container_name = "dalleimages"
     table_name = "tokenUsages"
     try:
-        service.create_table(table_name)
+        tableService.create_table(table_name)
         print("Table created!")
+        blobService.create_container(container_name)
     except Exception as e:
         pass
-    table_client = service.get_table_client(table_name=table_name)
+    table_client = tableService.get_table_client(table_name=table_name)
 
 except Exception as ex:
     print("Exception:")
@@ -58,13 +69,21 @@ print(GIPHY_API_KEY)
 OPEN_AI_API = os.getenv("OPEN_AI_API")
 
 import openai
+
 openai.api_key = OPEN_AI_API
 
-#CLIENT = discord.Client()
+# CLIENT = discord.Client()
 intents = discord.Intents.default()
 intents.message_content = True
 CLIENT = discord.Client(intents=intents)
 discord.opus.load_opus("libopus.so")
+
+
+def upload_image_to_container(filepath, blobName):
+    blob_client = blobService.get_blob_client(container=container_name, blob=blobName)
+
+    with open(file=filepath, mode="rb") as data:
+        blob_client.upload_blob(data)
 
 
 @CLIENT.event
@@ -120,35 +139,38 @@ async def on_message(message):
         await process_image_command(message)
         return
 
+
 async def process_image_command(message):
-    m = re.search(r"^!playclip\s+(.+)", message.content)
+    m = re.search(r"^!image\s+(.+)", message.content)
     query = message.content
     if m:
         query = m.group(1)
 
-    response = openai.Image.create(
-        prompt=query,
-        n=1,
-        size="1024x1024"
-       )
-    image_url = response['data'][0]['url']
+    response = openai.Image.create(prompt=query, n=1, size="1024x1024")
+    image_url = response["data"][0]["url"]
+    m = re.search(r"/([^\/]+?\.png)", image_url)
+    if m:
+        image_name = m.group(1)
+        img_data = requests.get(image_url).content
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(img_data)
+            upload_image_to_container(tmp.name, image_name)
+            image_url = blob_account_url + container_name + "/" + image_name
+
     embed = discord.Embed(colour=discord.Colour.blue())
     embed.set_image(url=image_url)
     await message.channel.send("", embed=embed)
 
 
-
-
 def should_process_image_command(message):
     if message.author == CLIENT.user:
         return False
-    if str(message.channel) != "poggers":
-        return False
+    #    if str(message.channel) != "poggers":
+    # return False
     if re.search("!image", str(message.content)) is None:
-#        print(message.content)
+        #        print(message.content)
         return False
     return True
-
 
 
 def should_process_chat_command(message):
@@ -157,9 +179,10 @@ def should_process_chat_command(message):
     if str(message.channel) != "poggers":
         return False
     if re.search("!chat", str(message.content)) is None:
-#        print(message.content)
+        #        print(message.content)
         return False
     return True
+
 
 async def process_chat_command(message):
     m = re.search(r"^!playclip\s+(.+)", message.content)
@@ -167,37 +190,43 @@ async def process_chat_command(message):
     if m:
         query = m.group(1)
 
- #   print(query)
-    completion = completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
-                                                           messages=[ {"role": "system", "content": "You are a helpful assistant who tries to answer questions to the best of your ability."},
-                                                                    # {"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
-                                                                    #  {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
-                                                                    #  {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
-                                                                     {"role": "user", "content": query}])
+    #   print(query)
+    completion = completion = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful assistant who tries to answer questions to the best of your ability.",
+            },
+            # {"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
+            #  {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
+            #  {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
+            {"role": "user", "content": query},
+        ],
+    )
     content = completion.choices[0].message.content
 
     messages = splitIntoChunks(content)
     for m in messages:
         await message.channel.send(m)
 
-def splitIntoChunks(inp, sep='\n', limit = 2000):
+
+def splitIntoChunks(inp, sep="\n", limit=2000):
     ray = inp.split(sep)
 
     result = []
 
     temp = []
     for item in ray:
-        curLen = len('\n'.join(temp))
+        curLen = len("\n".join(temp))
         if curLen + len(item) + 1 < limit:
             temp.append(item)
         else:
-            result.append('\n'.join(temp))
+            result.append("\n".join(temp))
             temp = [item]
     if len(temp) > 0:
-        result.append('\n'.join(temp))
+        result.append("\n".join(temp))
     return result
-
-
 
 
 def should_process_tokens_command(message):

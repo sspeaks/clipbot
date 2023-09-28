@@ -1,0 +1,10 @@
+azure-data-tables
+azure-storage-blob
+discord.py
+openai
+python-dotenv
+aiohttp
+pynacl
+six
+numpy
+azure-identity
