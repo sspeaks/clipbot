@@ -67,7 +67,7 @@ GUILD = os.getenv("DISCORD_GUILD")
 print(GUILD)
 GIPHY_API_KEY = open(os.getenv("GIPHY_API_KEY"), "r").read()
 print(GIPHY_API_KEY)
-OPEN_AI_API = open(os.getenv("OPEN_AI_API"), "r").read()
+OPEN_AI_API = open(os.getenv("OPEN_AI_KEY"), "r").read()
 
 import openai
 
