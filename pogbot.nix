@@ -18,7 +18,7 @@ let
   });
 in
 {
-options = {
+  options = {
     services.pogbot = {
       enable = lib.mkEnableOption "pogbot";
       package = lib.mkOption {
