@@ -1,12 +1,11 @@
 { pkgs, config, lib, ... }:
 let
   cfg = config.services.pogbot;
-  tr = v: builtins.trace "${v}" v;
   pogBotPackage = cfg.package.overrideAttrs (_: rec {
-    ASSETS_PATH_FILE = tr cfg.assetsPathFile;
-    DISCORD_TOKEN_FILE = tr cfg.discordTokenFile;
-    GIPHY_API_KEY_FILE = tr cfg.giphyAPIKeyFile;
-    OPEN_AI_KEY_FILE = tr cfg.openAIAPIKeyFile;
+    ASSETS_PATH_FILE = cfg.assetsPathFile;
+    DISCORD_TOKEN_FILE = cfg.discordTokenFile;
+    GIPHY_API_KEY_FILE = cfg.giphyAPIKeyFile;
+    OPEN_AI_KEY_FILE = cfg.openAIAPIKeyFile;
     postFixup = ''
       wrapProgram $out/bin/pogbot \
       --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg]} \
