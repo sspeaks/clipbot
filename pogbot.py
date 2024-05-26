@@ -15,6 +15,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import tempfile
 import requests
+import asyncio
 
 print(os.environ["LD_LIBRARY_PATH"])
 os.environ["LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
@@ -56,17 +57,17 @@ except Exception as ex:
     print(ex)
     exit()
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+dir_path = open(os.getenv("ASSETS_PATH"), "r").read()
 print(dir_path)
-load_dotenv()
-print("loaded env")
-TOKEN = os.getenv("DISCORD_TOKEN")
+# load_dotenv()
+# print("loaded env")
+TOKEN = open(os.getenv("DISCORD_TOKEN"), "r").read()
 print(TOKEN)
 GUILD = os.getenv("DISCORD_GUILD")
 print(GUILD)
-GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
+GIPHY_API_KEY = open(os.getenv("GIPHY_API_KEY"), "r").read()
 print(GIPHY_API_KEY)
-OPEN_AI_API = os.getenv("OPEN_AI_API")
+OPEN_AI_API = open(os.getenv("OPEN_AI_API"), "r").read()
 
 import openai
 
@@ -436,7 +437,7 @@ async def play_unmodified_audio_file(message, sourcePath):
         vc = await voice_channel.channel.connect()
         vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
         while vc.is_playing():
-            sleep(0.5)
+            await asyncio.sleep(0.5)
         await vc.disconnect()
         return True
     else:
@@ -481,7 +482,7 @@ async def play_pog_file(message):
             )
         )
         while vc.is_playing():
-            sleep(0.1)
+            await asyncio.sleep(0.5)
         await vc.disconnect()
     else:
         await message.author.send(
