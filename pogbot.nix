@@ -2,7 +2,7 @@
 let
   cfg = config.services.pogbot;
   tr = v: builtins.trace "${v}" v;
-  pogBotPackage = cfg.package.overrideAttrs (_: {
+  pogBotPackage = cfg.package.overrideAttrs (_: rec {
     ASSETS_PATH_FILE = tr cfg.assetsPathFile;
     DISCORD_TOKEN_FILE = tr cfg.discordTokenFile;
     GIPHY_API_KEY_FILE = tr cfg.giphyAPIKeyFile;
