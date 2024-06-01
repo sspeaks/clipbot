@@ -1,14 +1,14 @@
 { pkgs, ... }:
 let
-  auzre-data-tables = pkgs.python39Packages.buildPythonPackage rec {
+  auzre-data-tables = pkgs.python311Packages.buildPythonPackage rec {
     pname = "azure-data-tables";
     version = "12.4.0";
-    src = pkgs.python39Packages.fetchPypi {
+    src = pkgs.python311Packages.fetchPypi {
       inherit pname version;
       extension = "zip";
       sha256 = "sha256-3V/I3pHi+JCO+kxkyn9jz4OzBoqbpCYpjeO1QTnpZlw=";
     };
-    propagatedBuildInputs = with pkgs.python39Packages; [
+    propagatedBuildInputs = with pkgs.python311Packages; [
       azure-core
       msrest
     ];
@@ -17,34 +17,35 @@ let
     pythonImportsCheck = [ "azure.data.tables" ];
   };
 
-  azure-storage-blob = pkgs.python39Packages.buildPythonPackage rec {
+  azure-storage-blob = pkgs.python311Packages.buildPythonPackage rec {
     pname = "azure-storage-blob";
     version = "12.4.0";
-    src = pkgs.python39Packages.fetchPypi {
+    src = pkgs.python311Packages.fetchPypi {
       inherit pname version;
       extension = "zip";
       sha256 = "sha256-lqCbL/I012I2Z+EALJFrW1YuWCnqYrQXUwn2WrBqA+g=";
     };
-    propagatedBuildInputs = with pkgs.python39Packages; [
+    propagatedBuildInputs = with pkgs.python311Packages; [
       azure-core
       msrest
+      cryptography
     ];
     # has no tests
     doCheck = false;
     pythonImportsCheck = [ "azure.storage.blob" ];
   };
 
-  discordpy = pkgs.python39Packages.buildPythonPackage rec {
+  discordpy = pkgs.python311Packages.buildPythonPackage rec {
     pname = "discord.py";
     version = "2.2.2";
 
-    src = pkgs.python39Packages.fetchPypi {
+    src = pkgs.python311Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
       sha256 = "sha256-uZRAVry1cRstBAiISP0ARGbPEXwVyE+nmL9VRw8oJ18=";
     };
 
-    propagatedBuildInputs = with pkgs.python39Packages; [
+    propagatedBuildInputs = with pkgs.python311Packages; [
       aiohttp
       pynacl
     ];
@@ -55,24 +56,24 @@ let
     pythonImportsCheck = [ "discord" ];
   };
 
-  openai = pkgs.python39Packages.buildPythonPackage rec {
+  openai = pkgs.python311Packages.buildPythonPackage rec {
     pname = "openai";
     version = "0.27.1";
 
-    src = pkgs.python39Packages.fetchPypi {
+    src = pkgs.python311Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
       sha256 = "11a8eb9b609653295be6cc67febecd5189f17b22ef015462c5003d8959567fd7";
     };
 
-    propagatedBuildInputs = with pkgs.python39Packages; [ aiohttp requests tqdm ];
+    propagatedBuildInputs = with pkgs.python311Packages; [ aiohttp requests tqdm ];
 
     doCheck = false;
 
     pythonImportsCheck = [ "openai" ];
   };
 
-  python = pkgs.python39.withPackages (ps: (with ps; [
+  python = pkgs.python311.withPackages (ps: (with ps; [
     python-dotenv
     aiohttp
     pynacl
