@@ -1,4 +1,10 @@
-{ pkgs, ... }:
+{ pkgs
+, assetsPath ? "/dev/null"
+, discordToken ? "/dev/null"
+, giphyApiKey ? "/dev/null"
+, openAiApiKey ? "/dev/null"
+, ...
+}:
 let
   auzre-data-tables = pkgs.python311Packages.buildPythonPackage rec {
     pname = "azure-data-tables";
@@ -92,10 +98,10 @@ pkgs.stdenv.mkDerivation rec {
   /*
   *  Files that store the contents of these needed values
   */
-  ASSETS_PATH_FILE = "/dev/null";
-  DISCORD_TOKEN_FILE = "/dev/null";
-  GIPHY_API_KEY_FILE = "/dev/null";
-  OPEN_AI_KEY_FILE = "/dev/null";
+  ASSETS_PATH_FILE = assetsPath;
+  DISCORD_TOKEN_FILE = discordToken;
+  GIPHY_API_KEY_FILE = giphyApiKey;
+  OPEN_AI_KEY_FILE = openAiApiKey;
 
   installPhase = ''
     mkdir -p $out/bin

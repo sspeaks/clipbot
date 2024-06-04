@@ -1,21 +1,12 @@
 { pkgs, config, lib, ... }:
 let
   cfg = config.services.pogbot;
-  pogBotPackage = cfg.package.overrideAttrs (_: rec {
-    ASSETS_PATH_FILE = cfg.assetsPathFile;
-    DISCORD_TOKEN_FILE = cfg.discordTokenFile;
-    GIPHY_API_KEY_FILE = cfg.giphyAPIKeyFile;
-    OPEN_AI_KEY_FILE = cfg.openAIAPIKeyFile;
-    postFixup = ''
-      wrapProgram $out/bin/pogbot \
-      --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg]} \
-      --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath [pkgs.libopus] } \
-      --set ASSETS_PATH ${ASSETS_PATH_FILE} \
-      --set DISCORD_TOKEN ${DISCORD_TOKEN_FILE} \
-      --set GIPHY_API_KEY ${GIPHY_API_KEY_FILE} \
-      --set OPEN_AI_KEY ${OPEN_AI_KEY_FILE}
-    '';
-  });
+  pogBotPackage = cfg.package.override {
+    assetsPath = cfg.assetsPathFile;
+    discordToken = cfg.discordTokenFile;
+    giphyApiKey = cfg.giphyAPIKeyFile;
+    openAiApiKey = cfg.openAIAPIKeyFile;
+  };
 in
 {
   options = {

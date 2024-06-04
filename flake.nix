@@ -7,10 +7,14 @@
       inherit (self) outputs;
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system}.pkgs;
+      lib = pkgs.lib;
     in
     {
       overlays.default = final: prev: {
-        pogbot = import ./default.nix { pkgs = final; };
+
+        pogbot =
+          let f = import ./default.nix;
+          in lib.makeOverridable f { pkgs = final; };
       };
       packages.${system}.default = pkgs.callPackage ./default.nix { };
       # legacyPackages.${system}.pogbot = outputs.packages.${system}.default;
