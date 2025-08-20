@@ -42,13 +42,13 @@ let
   };
 
   discordpy = pkgs.python311Packages.buildPythonPackage rec {
-    pname = "discord.py";
-    version = "2.2.2";
+    pname = "discord_py";
+    version = "2.6.0";
 
     src = pkgs.python311Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
-      sha256 = "sha256-uZRAVry1cRstBAiISP0ARGbPEXwVyE+nmL9VRw8oJ18=";
+      sha256 = "8aa0f017524734653e6ddddb7878e1cdf8c3868bd7d1a386c36cd8373e5fba02";
     };
 
     propagatedBuildInputs = with pkgs.python311Packages; [
