@@ -6,7 +6,9 @@
 , ...
 }:
 let
+  setuptools = pkgs.python311Packages.setuptools;
   auzre-data-tables = pkgs.python311Packages.buildPythonPackage rec {
+    #  To build with setuptools as before, set `pyproject = true` and `build-system = [ setuptools ]`.`
     pname = "azure-data-tables";
     version = "12.4.0";
     src = pkgs.python311Packages.fetchPypi {
@@ -18,6 +20,8 @@ let
       azure-core
       msrest
     ];
+    pyproject = true;
+    build-system = [ setuptools ];
     # has no tests
     doCheck = false;
     pythonImportsCheck = [ "azure.data.tables" ];
@@ -36,6 +40,8 @@ let
       msrest
       cryptography
     ];
+    pyproject = true;
+    build-system = [ setuptools ];
     # has no tests
     doCheck = false;
     pythonImportsCheck = [ "azure.storage.blob" ];
@@ -55,6 +61,8 @@ let
       aiohttp
       pynacl
     ];
+    pyproject = true;
+    build-system = [ setuptools ];
 
     # has no tests
     doCheck = false;
@@ -73,6 +81,8 @@ let
     };
 
     propagatedBuildInputs = with pkgs.python311Packages; [ aiohttp requests tqdm ];
+    pyproject = true;
+    build-system = [ setuptools ];
 
     doCheck = false;
 
