@@ -79,6 +79,7 @@ async def print_help_message(message):
 !image *prompt* - Generate an AI image from a prompt
 !listen - Pogbot joins your voice channel and starts listening
 !leave - Pogbot stops listening and leaves the voice channel
+!say *message* - Anonymous TTS! DM this to Pogbot and it speaks in your voice channel (1 token)
 
 Say "clip that" while Pogbot is listening to save the last 30s of audio!
 ```"""

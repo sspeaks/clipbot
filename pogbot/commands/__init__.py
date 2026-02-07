@@ -16,6 +16,7 @@ from pogbot.commands.fun import (
     print_help_message,
 )
 from pogbot.commands.ai import process_chat_command, process_image_command
+from pogbot.commands.tts import process_say_command
 
 
 COMMANDS = {
@@ -40,10 +41,14 @@ async def on_message(message):
     if re.search("pog", message.content, flags=re.IGNORECASE):
         await message.add_reaction("<:mentos:1044740202947678228>")
 
-    # !files only works in DMs
-    if message.content == "!files" and re.search("^Direct Message", str(message.channel)):
-        await process_get_files(message)
-        return
+    # !files and !say only work in DMs
+    if re.search("^Direct Message", str(message.channel)):
+        if message.content == "!files":
+            await process_get_files(message)
+            return
+        if message.content.startswith("!say "):
+            await process_say_command(message)
+            return
 
     # Channel-restricted commands
     command = message.content.split()[0] if message.content else ""
