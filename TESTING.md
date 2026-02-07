@@ -33,66 +33,66 @@ journalctl -u pogbot -f
 These verify that the multi-file split didn't break any existing behavior.
 
 ### 0.1 — Bot Startup
-- [ ] Bot connects and prints `CONNECTED!` to logs
-- [ ] Bot prints `is connected to the following guild:` for your server
-- [ ] No import errors or tracebacks on startup
+- [x] Bot connects and prints `CONNECTED!` to logs
+- [x] Bot prints `is connected to the following guild:` for your server
+- [x] No import errors or tracebacks on startup
 
 ### 0.2 — Pog Reaction
-- [ ] Send any message containing "pog" (e.g. "that was poggers") in any channel
-- [ ] Bot adds the `:mentos:` reaction to the message
-- [ ] Bot does **not** react to its own messages
+- [x] Send any message containing "pog" (e.g. "that was poggers") in any channel
+- [x] Bot adds the `:mentos:` reaction to the message
+- [x] Bot does **not** react to its own messages
 
 ### 0.3 — `!pogcheck`
-- [ ] Type `!pogcheck` in the `poggers` channel
-- [ ] Bot responds with a pog rating message and an embedded gif
-- [ ] Rating is between 1-10; low/medium/high messages match the value
+- [x] Type `!pogcheck` in the `poggers` channel
+- [x] Bot responds with a pog rating message and an embedded gif
+- [x] Rating is between 1-10; low/medium/high messages match the value
 
 ### 0.4 — `!pogmedaddy`
-- [ ] Join a voice channel
-- [ ] Type `!pogmedaddy` in the `poggers` channel
-- [ ] Bot joins, plays a random clip with randomized speed/pitch, then disconnects
-- [ ] The command message is deleted after playback
-- [ ] If you're **not** in a voice channel, bot DMs you an error
+- [x] Join a voice channel
+- [x] Type `!pogmedaddy` in the `poggers` channel
+- [x] Bot joins, plays a random clip with randomized speed/pitch, then disconnects
+- [x] The command message is deleted after playback
+- [x] If you're **not** in a voice channel, bot DMs you an error
 
 ### 0.5 — `!bettermage`
-- [ ] Type `!bettermage` in the `poggers` channel
-- [ ] Bot responds with a mage message, the `nolorra_better.png` image, and plays `AndHisNameIs.mp3`
-- [ ] Bot does **not** trigger `!bettermage` from its own messages
+- [x] Type `!bettermage` in the `poggers` channel
+- [x] Bot responds with a mage message, the `nolorra_better.png` image, and plays `AndHisNameIs.mp3`
+- [x] Bot does **not** trigger `!bettermage` from its own messages
 
 ### 0.6 — `!help`
-- [ ] Type `!help` in the `poggers` channel
-- [ ] Bot responds with a code block listing all commands
-- [ ] New commands `!listen`, `!leave`, and "clip that" are documented
+- [x] Type `!help` in the `poggers` channel
+- [x] Bot responds with a code block listing all commands
+- [x] New commands `!listen`, `!leave`, and "clip that" are documented
 
 ### 0.7 — `!tokens`
-- [ ] Type `!tokens` in the `poggers` channel
-- [ ] Bot responds with your token count
+- [x] Type `!tokens` in the `poggers` channel
+- [x] Bot responds with your token count
 
 ### 0.8 — `!playclip`
-- [ ] Type `!playclip pogmedaddy.mp3` in `poggers` (while in a voice channel)
-- [ ] Bot joins, plays the file unmodified, deducts a token, confirms
-- [ ] Type `!playclip nonexistent.mp3` — bot responds with error message
-- [ ] Type `!playclip` (no filename) — bot tells you the correct syntax
+- [x] Type `!playclip pogmedaddy.mp3` in `poggers` (while in a voice channel)
+- [x] Bot joins, plays the file unmodified, deducts a token, confirms
+- [x] Type `!playclip nonexistent.mp3` — bot responds with error message
+- [x] Type `!playclip` (no filename) — bot tells you the correct syntax
 
 ### 0.9 — `!files`
-- [ ] Send `!files` as a **DM to pogbot** (not in a channel)
-- [ ] Bot responds with a header message and a list of audio filenames sorted by date
-- [ ] Typing `!files` in a server channel does **not** trigger the command
+- [x] Send `!files` as a **DM to pogbot** (not in a channel)
+- [x] Bot responds with a header message and a list of audio filenames sorted by date
+- [x] Typing `!files` in a server channel does **not** trigger the command
 
 ### 0.10 — `!chat`
-- [ ] Type `!chat what is 2+2` in the `poggers` channel
-- [ ] Bot responds with an AI-generated answer (should include "4")
-- [ ] Long responses are split into multiple messages (under 2000 chars each)
+- [x] Type `!chat what is 2+2` in the `poggers` channel
+- [x] Bot responds with an AI-generated answer (should include "4")
+- [x] Long responses are split into multiple messages (under 2000 chars each)
 
 ### 0.11 — `!image`
-- [ ] Type `!image a cute cat` in **any** channel (not restricted to `poggers`)
-- [ ] Bot responds with an embedded AI-generated image
-- [ ] Image is uploaded to Azure Blob Storage
+- [x] Type `!image a cute cat` in **any** channel (not restricted to `poggers`)
+- [x] Bot responds with an embedded AI-generated image
+- [x] Image is uploaded to Azure Blob Storage
 
 ### 0.12 — Channel Restrictions
-- [ ] Commands like `!pogcheck`, `!chat`, `!tokens` do **nothing** outside `poggers`
-- [ ] `!image` works in any channel
-- [ ] `!files` only works in DMs
+- [x] Commands like `!pogcheck`, `!chat`, `!tokens` do **nothing** outside `poggers`
+- [x] `!image` works in any channel
+- [x] `!files` only works in DMs
 
 ---
 
@@ -100,19 +100,19 @@ These verify that the multi-file split didn't break any existing behavior.
 
 ### 1.1 — `!listen` (Happy Path)
 - [ ] Join a voice channel
-- [ ] Type `!listen` in `poggers`
-- [ ] Bot joins your voice channel
-- [ ] Bot responds: "🎙️ Listening! Say **"clip that"** to save a clip, or type `!leave` to stop."
-- [ ] Check logs — web server should print `Clip trimmer web server running on http://0.0.0.0:8080`
+- [x] Type `!listen` in `poggers`
+- [x] Bot joins your voice channel
+- [x] Bot responds: "🎙️ Listening! Say **"clip that"** to save a clip, or type `!leave` to stop."
+- [x] Check logs — web server should print `Clip trimmer web server running on http://0.0.0.0:8080`
 
 ### 1.2 — `!listen` (Edge Cases)
-- [ ] Type `!listen` when **not** in a voice channel — bot responds with error
-- [ ] Type `!listen` when bot is **already** listening — bot responds "Already listening!"
+- [x] Type `!listen` when **not** in a voice channel — bot responds with error
+- [x] Type `!listen` when bot is **already** listening — bot responds "Already listening!"
 
 ### 1.3 — `!leave`
-- [ ] Type `!leave` in `poggers` while bot is listening
-- [ ] Bot disconnects from voice and responds "👋 Stopped listening."
-- [ ] Type `!leave` when bot is **not** listening — bot responds "Not currently listening"
+- [x] Type `!leave` in `poggers` while bot is listening
+- [x] Bot disconnects from voice and responds "👋 Stopped listening."
+- [x] Type `!leave` when bot is **not** listening — bot responds "Not currently listening"
 
 ---
 

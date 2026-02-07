@@ -23,7 +23,6 @@ COMMANDS = {
     "!pogmedaddy": lambda msg: play_pog_file(msg),
     "!help": lambda msg: print_help_message(msg),
     "!bettermage": lambda msg: process_better_mage(msg),
-    "!files": lambda msg: process_get_files(msg),
     "!playclip": lambda msg: play_file(msg, get_updated_tokens_for_user(msg.author)),
     "!tokens": lambda msg: process_tokens_command(msg, get_updated_tokens_for_user(msg.author)),
     "!chat": lambda msg: process_chat_command(msg),

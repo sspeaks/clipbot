@@ -1,8 +1,12 @@
+import logging
 import os
 
 from pogbot.config import CLIENT, TOKEN, GUILD
 from pogbot.clipping.web.server import start_web_server
 from pogbot.clipping.detector import run_temp_cleanup
+
+# Suppress noisy RTCP packet warnings from voice_recv
+logging.getLogger("discord.ext.voice_recv.reader").setLevel(logging.ERROR)
 
 # Importing commands registers the @CLIENT.event handlers
 import pogbot.commands  # noqa: F401

@@ -53,7 +53,7 @@
 
 <script>
 const CLIP_ID = "{{CLIP_ID}}";
-const audioUrl = `/audio/${CLIP_ID}`;
+const audioUrl = `../audio/${CLIP_ID}`;
 
 let audioContext, audioBuffer, sourceNode;
 let startSec = 0, endSec = 0, duration = 0;
@@ -185,7 +185,7 @@ saveBtn.addEventListener("click", async () => {
   saveBtn.textContent = "Saving...";
 
   try {
-    const resp = await fetch(`/trim/${CLIP_ID}`, {
+    const resp = await fetch(window.location.pathname, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ start: startSec, end: endSec, filename }),
