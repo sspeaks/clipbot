@@ -14,7 +14,7 @@ TRIMMER_BASE_URL = os.getenv("POGBOT_TRIMMER_URL", "http://localhost:8080")
 # Cooldown between clip triggers (seconds)
 COOLDOWN_SECONDS = 10
 CHECK_INTERVAL_SECONDS = 5
-WHISPER_WINDOW_SECONDS = 5
+WHISPER_WINDOW_SECONDS = 7  # Overlap with previous window to catch phrases at boundaries
 
 # Stores pending clips: clip_id -> {"path": filepath, "text_channel": channel}
 pending_clips = {}
