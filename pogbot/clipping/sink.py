@@ -24,6 +24,7 @@ class RollingBufferSink(AudioSink):
         self._slots = {}  # time_index -> bytearray of mixed PCM
         self._start_time = time.monotonic()
         self._lock = threading.Lock()
+        self.last_write_time = time.monotonic()
 
     def _time_index(self):
         elapsed_ms = (time.monotonic() - self._start_time) * 1000
@@ -35,6 +36,7 @@ class RollingBufferSink(AudioSink):
     def write(self, user, data):
         pcm = data.pcm
         idx = self._time_index()
+        self.last_write_time = time.monotonic()
 
         # Normalize to exactly one frame
         if len(pcm) < FRAME_BYTES:

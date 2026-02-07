@@ -2,6 +2,7 @@ import os
 import random
 import re
 import asyncio
+import time
 
 import discord
 import numpy
@@ -14,6 +15,9 @@ from pogbot.clipping.detector import run_clip_detector
 
 # Active listening sessions: guild_id -> (voice_client, sink, text_channel)
 _listening_sessions = {}
+
+INACTIVITY_TIMEOUT = 300  # 5 minutes in seconds
+INACTIVITY_CHECK_INTERVAL = 30  # check every 30 seconds
 
 
 async def start_listening(message):
@@ -35,6 +39,8 @@ async def start_listening(message):
 
     # Start the background clip detector
     asyncio.create_task(run_clip_detector(guild_id, get_listening_session))
+    # Start the inactivity monitor
+    asyncio.create_task(_run_inactivity_monitor(guild_id))
 
     await message.channel.send("🎙️ Listening! Say **\"clip that\"** to save a clip, or type `!leave` to stop.")
 
@@ -56,6 +62,37 @@ async def stop_listening(message):
 def get_listening_session(guild_id):
     """Get the active listening session for a guild, or None."""
     return _listening_sessions.get(guild_id)
+
+
+async def _run_inactivity_monitor(guild_id):
+    """Auto-disconnect after 5 minutes of inactivity (no humans or silence)."""
+    while True:
+        await asyncio.sleep(INACTIVITY_CHECK_INTERVAL)
+
+        session = _listening_sessions.get(guild_id)
+        if session is None:
+            return
+
+        vc, sink, text_channel = session
+
+        # Check if humans are in the channel (exclude the bot itself)
+        humans = [m for m in vc.channel.members if not m.bot]
+        no_humans = len(humans) == 0
+
+        # Check if audio has been received recently
+        silence = (time.monotonic() - sink.last_write_time) > INACTIVITY_TIMEOUT
+
+        if no_humans or silence:
+            session = _listening_sessions.pop(guild_id, None)
+            if session is None:
+                return
+            vc, sink, text_channel = session
+            vc.stop()
+            sink.cleanup()
+            await vc.disconnect()
+            reason = "no one in the channel" if no_humans else "silence"
+            await text_channel.send(f"👋 Left voice due to {reason} (5 min timeout).")
+            return
 
 
 async def play_unmodified_audio_file(message, source_path):

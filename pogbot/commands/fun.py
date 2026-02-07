@@ -80,6 +80,7 @@ async def print_help_message(message):
 !listen - Pogbot joins your voice channel and starts listening
 !leave - Pogbot stops listening and leaves the voice channel
 !say *message* - Anonymous TTS! DM this to Pogbot and it speaks in your voice channel (1 token)
+!roast *@user* [context] - Anonymous AI roast! DM to Pogbot, it roasts them in voice (2 tokens)
 
 Say "clip that" while Pogbot is listening to save the last 30s of audio!
 ```"""

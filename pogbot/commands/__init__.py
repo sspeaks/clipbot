@@ -17,6 +17,7 @@ from pogbot.commands.fun import (
 )
 from pogbot.commands.ai import process_chat_command, process_image_command
 from pogbot.commands.tts import process_say_command
+from pogbot.commands.roast import process_roast_command
 
 
 COMMANDS = {
@@ -48,6 +49,9 @@ async def on_message(message):
             return
         if message.content.startswith("!say "):
             await process_say_command(message)
+            return
+        if message.content.startswith("!roast "):
+            await process_roast_command(message)
             return
 
     # Channel-restricted commands
