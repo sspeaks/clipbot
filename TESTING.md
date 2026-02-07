@@ -119,10 +119,10 @@ These verify that the multi-file split didn't break any existing behavior.
 ## Phase 2: "Clip That" Detection
 
 ### 2.1 — Trigger Detection
-- [ ] Have the bot listening (`!listen`)
-- [ ] Speak normally for a few seconds, then say **"clip that"** clearly
-- [ ] Within ~5-10 seconds, bot posts: "🎬 **Clip captured!** Trim it here: <url>"
-- [ ] The URL matches the `POGBOT_TRIMMER_URL` env var pattern
+- [x] Have the bot listening (`!listen`)
+- [x] Speak normally for a few seconds, then say **"clip that"** clearly
+- [x] Within ~5-10 seconds, bot posts: "🎬 **Clip captured!** Trim it here: <url>"
+- [x] The URL matches the `POGBOT_TRIMMER_URL` env var pattern
 
 ### 2.2 — Alternative Triggers
 - [ ] Say **"clip it"** — should also trigger

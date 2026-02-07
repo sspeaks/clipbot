@@ -61,11 +61,20 @@ def get_listening_session(guild_id):
 async def play_unmodified_audio_file(message, source_path):
     voice_channel = message.author.voice
     if voice_channel is not None:
-        vc = await voice_channel.channel.connect()
-        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=source_path))
-        while vc.is_playing():
-            await asyncio.sleep(0.5)
-        await vc.disconnect()
+        guild_id = message.guild.id
+        session = _listening_sessions.get(guild_id)
+        # Reuse existing voice client if bot is already listening
+        if session and session[0].channel.id == voice_channel.channel.id:
+            vc = session[0]
+            vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=source_path))
+            while vc.is_playing():
+                await asyncio.sleep(0.5)
+        else:
+            vc = await voice_channel.channel.connect()
+            vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=source_path))
+            while vc.is_playing():
+                await asyncio.sleep(0.5)
+            await vc.disconnect()
         return True
     else:
         await message.author.send(
@@ -75,9 +84,6 @@ async def play_unmodified_audio_file(message, source_path):
 
 
 async def play_pog_file(message):
-    for vc in CLIENT.voice_clients:
-        await vc.disconnect()
-        await asyncio.sleep(0.5)
     audio_path = os.path.join(dir_path, "assets", "audio")
     choices = [os.path.abspath(os.path.join(audio_path, item)) for item in os.listdir(audio_path)]
     source_path = random.choice(choices)
@@ -90,7 +96,17 @@ async def play_pog_file(message):
 
     voice_channel = message.author.voice
     if voice_channel is not None:
-        vc = await voice_channel.channel.connect()
+        guild_id = message.guild.id
+        session = _listening_sessions.get(guild_id)
+        # Reuse existing voice client if bot is already listening
+        if session and session[0].channel.id == voice_channel.channel.id:
+            vc = session[0]
+        else:
+            for existing_vc in CLIENT.voice_clients:
+                if existing_vc.guild.id == guild_id:
+                    await existing_vc.disconnect()
+                    await asyncio.sleep(0.5)
+            vc = await voice_channel.channel.connect()
         vc.play(
             discord.FFmpegPCMAudio(
                 executable="ffmpeg",
@@ -100,7 +116,9 @@ async def play_pog_file(message):
         )
         while vc.is_playing():
             await asyncio.sleep(0.5)
-        await vc.disconnect()
+        # Only disconnect if we're not in a listening session
+        if not session or session[0].channel.id != voice_channel.channel.id:
+            await vc.disconnect()
     else:
         await message.author.send(
             "You're not in a channel. Daddy can't pog people that aren't in a channel."
