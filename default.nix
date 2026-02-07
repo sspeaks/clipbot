@@ -70,6 +70,25 @@ let
     pythonImportsCheck = [ "discord" ];
   };
 
+  discord-ext-voice-recv = pkgs.python311Packages.buildPythonPackage rec {
+    pname = "discord_ext_voice_recv";
+    version = "0.5.2a179";
+
+    src = pkgs.python311Packages.fetchPypi {
+      inherit pname version;
+      extension = "tar.gz";
+      sha256 = "6cb8f5ff60c3885020e5ebd879323dc97ebb0745788f3778a14ef31810f848a8";
+    };
+
+    propagatedBuildInputs = [ discordpy ] ++ (with pkgs.python311Packages; [ pynacl ]);
+    pyproject = true;
+    build-system = [ setuptools ];
+
+    doCheck = false;
+
+    pythonImportsCheck = [ "discord.ext.voice_recv" ];
+  };
+
   openai = pkgs.python311Packages.buildPythonPackage rec {
     pname = "openai";
     version = "0.27.1";
@@ -96,7 +115,7 @@ let
     six
     numpy
     azure-identity
-  ]) ++ [ auzre-data-tables openai discordpy azure-storage-blob ]);
+  ]) ++ [ auzre-data-tables openai discordpy discord-ext-voice-recv azure-storage-blob ]);
 
 in
 pkgs.stdenv.mkDerivation rec {
@@ -114,10 +133,15 @@ pkgs.stdenv.mkDerivation rec {
   OPEN_AI_KEY_FILE = openAiApiKey;
 
   installPhase = ''
-    mkdir -p $out/bin
-    # cp "${./.}/.env" $out/bin/.env
+    mkdir -p $out/bin $out/lib
     ln -s "$(cat ${ASSETS_PATH_FILE})/assets" $out/bin/assets
-    cp ${./pogbot.py } $out/bin/pogbot
+    cp -r ${./pogbot} $out/lib/pogbot
+    cat > $out/bin/pogbot <<EOF
+#!/usr/bin/env python
+import runpy, sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+runpy.run_module('pogbot', run_name='__main__')
+EOF
     chmod +x $out/bin/pogbot
   '';
   postFixup = ''

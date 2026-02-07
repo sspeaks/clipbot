@@ -32,6 +32,16 @@ in
         description = "Secret token for Open AI api";
         type = lib.types.str;
       };
+      webPort = lib.mkOption {
+        description = "Port for the clip trimmer web server";
+        type = lib.types.port;
+        default = 8080;
+      };
+      trimmerUrl = lib.mkOption {
+        description = "Public base URL for clip trimmer links (e.g. https://mycatsonfire.com/pogbot)";
+        type = lib.types.str;
+        default = "http://localhost:8080";
+      };
     };
   };
   config = lib.mkIf cfg.enable
@@ -43,10 +53,15 @@ in
           Restart = "always";
           RestartSec = 1;
         };
+        environment = {
+          POGBOT_WEB_PORT = toString cfg.webPort;
+          POGBOT_TRIMMER_URL = cfg.trimmerUrl;
+        };
         wantedBy = [ "multi-user.target" ];
         after = [ "network.target" ];
         path = [ pkgs.ffmpeg ];
       };
       systemd.services.pogbot.enable = true;
+      networking.firewall.allowedTCPPorts = [ cfg.webPort ];
     };
 }

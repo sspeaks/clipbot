@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pogbot Clip Trimmer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1a1a2e; color: #eee; display: flex; justify-content: center; padding: 2rem; }
+  .container { max-width: 800px; width: 100%; }
+  h1 { margin-bottom: 1rem; color: #e94560; }
+  .waveform-container { position: relative; background: #16213e; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  canvas { width: 100%; height: 150px; display: block; cursor: crosshair; }
+  .selection { position: absolute; top: 1rem; height: 150px; background: rgba(233, 69, 96, 0.25); border-left: 2px solid #e94560; border-right: 2px solid #e94560; pointer-events: none; }
+  .controls { display: flex; gap: 1rem; align-items: center; margin: 1rem 0; flex-wrap: wrap; }
+  .controls label { font-size: 0.9rem; }
+  .controls input[type="number"] { width: 80px; padding: 0.4rem; background: #16213e; color: #eee; border: 1px solid #0f3460; border-radius: 4px; }
+  .controls input[type="text"] { flex: 1; min-width: 200px; padding: 0.4rem; background: #16213e; color: #eee; border: 1px solid #0f3460; border-radius: 4px; }
+  button { padding: 0.6rem 1.2rem; background: #e94560; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+  button:hover { background: #c73652; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none; }
+  .status.success { display: block; background: #1b4332; color: #95d5b2; }
+  .status.error { display: block; background: #3d0000; color: #ff6b6b; }
+  .time-display { font-size: 0.85rem; color: #aaa; margin: 0.5rem 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎬 Trim Your Clip</h1>
+  <p>Click and drag on the waveform to select the section you want to keep.</p>
+
+  <div class="waveform-container">
+    <canvas id="waveform"></canvas>
+    <div class="selection" id="selection"></div>
+  </div>
+
+  <div class="time-display" id="timeDisplay">Selected: 0.00s - 0.00s (0.00s)</div>
+
+  <div class="controls">
+    <label>Start (s): <input type="number" id="startInput" step="0.1" min="0" value="0"></label>
+    <label>End (s): <input type="number" id="endInput" step="0.1" min="0" value="0"></label>
+    <button id="previewBtn" disabled>▶ Preview</button>
+  </div>
+
+  <div class="controls">
+    <label>Clip name: <input type="text" id="filenameInput" placeholder="my-cool-clip"></label>
+    <button id="saveBtn" disabled>💾 Save to Clip Store</button>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const CLIP_ID = "{{CLIP_ID}}";
+const audioUrl = `/audio/${CLIP_ID}`;
+
+let audioContext, audioBuffer, sourceNode;
+let startSec = 0, endSec = 0, duration = 0;
+let isDragging = false, dragStart = 0;
+
+const canvas = document.getElementById("waveform");
+const ctx = canvas.getContext("2d");
+const selectionEl = document.getElementById("selection");
+const timeDisplay = document.getElementById("timeDisplay");
+const startInput = document.getElementById("startInput");
+const endInput = document.getElementById("endInput");
+const previewBtn = document.getElementById("previewBtn");
+const saveBtn = document.getElementById("saveBtn");
+const statusEl = document.getElementById("status");
+
+async function init() {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const response = await fetch(audioUrl);
+  const arrayBuffer = await response.arrayBuffer();
+  audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  duration = audioBuffer.duration;
+
+  endSec = duration;
+  endInput.value = duration.toFixed(1);
+  endInput.max = duration.toFixed(1);
+  startInput.max = duration.toFixed(1);
+
+  drawWaveform();
+  updateSelection();
+  previewBtn.disabled = false;
+  saveBtn.disabled = false;
+}
+
+function drawWaveform() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const data = audioBuffer.getChannelData(0);
+  const step = Math.ceil(data.length / rect.width);
+  const amp = rect.height / 2;
+
+  ctx.fillStyle = "#16213e";
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#0f3460";
+  ctx.moveTo(0, amp);
+  ctx.lineTo(rect.width, amp);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#e94560";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < rect.width; i++) {
+    let min = 1.0, max = -1.0;
+    for (let j = 0; j < step; j++) {
+      const val = data[i * step + j] || 0;
+      if (val < min) min = val;
+      if (val > max) max = val;
+    }
+    ctx.moveTo(i, (1 + min) * amp);
+    ctx.lineTo(i, (1 + max) * amp);
+  }
+  ctx.stroke();
+}
+
+function updateSelection() {
+  const rect = canvas.getBoundingClientRect();
+  const left = (startSec / duration) * rect.width;
+  const width = ((endSec - startSec) / duration) * rect.width;
+  selectionEl.style.left = `calc(1rem + ${left}px)`;
+  selectionEl.style.width = `${width}px`;
+
+  const len = endSec - startSec;
+  timeDisplay.textContent = `Selected: ${startSec.toFixed(2)}s - ${endSec.toFixed(2)}s (${len.toFixed(2)}s)`;
+  startInput.value = startSec.toFixed(1);
+  endInput.value = endSec.toFixed(1);
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  const rect = canvas.getBoundingClientRect();
+  dragStart = ((e.clientX - rect.left) / rect.width) * duration;
+  startSec = dragStart;
+  endSec = dragStart;
+  updateSelection();
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const current = ((e.clientX - rect.left) / rect.width) * duration;
+  startSec = Math.max(0, Math.min(dragStart, current));
+  endSec = Math.min(duration, Math.max(dragStart, current));
+  updateSelection();
+});
+
+canvas.addEventListener("mouseup", () => { isDragging = false; });
+canvas.addEventListener("mouseleave", () => { isDragging = false; });
+
+startInput.addEventListener("change", () => {
+  startSec = Math.max(0, Math.min(parseFloat(startInput.value) || 0, endSec));
+  updateSelection();
+});
+
+endInput.addEventListener("change", () => {
+  endSec = Math.min(duration, Math.max(parseFloat(endInput.value) || 0, startSec));
+  updateSelection();
+});
+
+previewBtn.addEventListener("click", () => {
+  if (sourceNode) { sourceNode.stop(); }
+  sourceNode = audioContext.createBufferSource();
+  sourceNode.buffer = audioBuffer;
+  sourceNode.connect(audioContext.destination);
+  sourceNode.start(0, startSec, endSec - startSec);
+});
+
+saveBtn.addEventListener("click", async () => {
+  const filename = document.getElementById("filenameInput").value.trim();
+  if (!filename) { showStatus("Please enter a clip name.", "error"); return; }
+  if (endSec - startSec < 0.5) { showStatus("Selection too short (min 0.5s).", "error"); return; }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+
+  try {
+    const resp = await fetch(`/trim/${CLIP_ID}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start: startSec, end: endSec, filename }),
+    });
+    const result = await resp.json();
+    if (resp.ok) {
+      showStatus(`✅ Saved as "${result.filename}"! You can close this page.`, "success");
+      saveBtn.textContent = "Saved!";
+    } else {
+      showStatus(`❌ ${result.error}`, "error");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "💾 Save to Clip Store";
+    }
+  } catch (e) {
+    showStatus(`❌ Network error: ${e.message}`, "error");
+    saveBtn.disabled = false;
+    saveBtn.textContent = "💾 Save to Clip Store";
+  }
+});
+
+function showStatus(msg, type) {
+  statusEl.textContent = msg;
+  statusEl.className = `status ${type}`;
+}
+
+window.addEventListener("resize", () => { if (audioBuffer) drawWaveform(); });
+init();
+</script>
+</body>
+</html>

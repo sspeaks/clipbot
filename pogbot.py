@@ -2,20 +2,19 @@
 import os
 import json
 import random
+import re
+import tempfile
+import asyncio
+from dataclasses import dataclass, asdict, field
+from datetime import datetime
+
 import discord
-from dotenv import load_dotenv
-from time import sleep
 import aiohttp
 import numpy
-import re
+import openai
 from azure.identity import DefaultAzureCredential
 from azure.data.tables import TableServiceClient, UpdateMode
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-from dataclasses import dataclass, asdict
-from datetime import datetime
-import tempfile
-import requests
-import asyncio
+from azure.storage.blob import BlobServiceClient
 
 print(os.environ["LD_LIBRARY_PATH"])
 os.environ["LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
@@ -24,7 +23,7 @@ os.environ["LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
 @dataclass
 class TokenUsage:
     RowKey: str
-    PartitionKey: str = str(datetime.now().timestamp())
+    PartitionKey: str = field(default_factory=lambda: str(datetime.now().timestamp()))
     tokens: int = 1
     tokensSpent: int = 0
     giftedTokens: int = 50
@@ -36,7 +35,6 @@ try:
     blob_account_url = "https://pogbot.blob.core.windows.net/"
     default_credential = DefaultAzureCredential()
 
-    # Create the BlobServiceClient object
     tableService = TableServiceClient(
         endpoint=table_account_url, credential=default_credential
     )
@@ -58,30 +56,21 @@ except Exception as ex:
     exit()
 
 dir_path = open(os.getenv("ASSETS_PATH"), "r").read()
-print(dir_path)
-# load_dotenv()
-# print("loaded env")
 TOKEN = open(os.getenv("DISCORD_TOKEN"), "r").read()
-print(TOKEN)
 GUILD = os.getenv("DISCORD_GUILD")
-print(GUILD)
 GIPHY_API_KEY = open(os.getenv("GIPHY_API_KEY"), "r").read()
-print(GIPHY_API_KEY)
 OPEN_AI_API = open(os.getenv("OPEN_AI_KEY"), "r").read()
-
-import openai
 
 openai.api_key = OPEN_AI_API
 
-# CLIENT = discord.Client()
 intents = discord.Intents.default()
 intents.message_content = True
 CLIENT = discord.Client(intents=intents)
 discord.opus.load_opus("libopus.so")
 
 
-def upload_image_to_container(filepath, blobName):
-    blob_client = blobService.get_blob_client(container=container_name, blob=blobName)
+def upload_image_to_container(filepath, blob_name):
+    blob_client = blobService.get_blob_client(container=container_name, blob=blob_name)
 
     with open(file=filepath, mode="rb") as data:
         blob_client.upload_blob(data)
@@ -104,115 +93,83 @@ async def on_ready():
             break
 
 
+COMMANDS = {
+    "!pogcheck": lambda msg: handle_pogcheck_message(msg),
+    "!pogmedaddy": lambda msg: play_pog_file(msg),
+    "!help": lambda msg: print_help_message(msg),
+    "!bettermage": lambda msg: process_better_mage(msg),
+    "!files": lambda msg: process_get_files(msg),
+    "!playclip": lambda msg: play_file(msg, get_updated_tokens_for_user(msg.author)),
+    "!tokens": lambda msg: process_tokens_command(msg, get_updated_tokens_for_user(msg.author)),
+    "!chat": lambda msg: process_chat_command(msg),
+    "!image": lambda msg: process_image_command(msg),
+}
+
+
 @CLIENT.event
 async def on_message(message):
-    if message.author != CLIENT.user and re.search(
-        "pog", message.content, flags=re.IGNORECASE
-    ):
+    if message.author == CLIENT.user:
+        return
+
+    if re.search("pog", message.content, flags=re.IGNORECASE):
         await message.add_reaction("<:mentos:1044740202947678228>")
-    if should_process_pogcheck_message(message):
-        await handle_pogcheck_message(message)
-        return
-    if should_process_pogmedaddy_message(message):
-        await play_pog_file(message)
-        return
-    if should_process_help_message(message):
-        await print_help_message(message)
-        return
-    if should_process_better_mage(message):
-        await process_better_mage(message)
-        return
-    if should_process_get_files(message):
+
+    # !files only works in DMs
+    if message.content == "!files" and re.search("^Direct Message", str(message.channel)):
         await process_get_files(message)
         return
-    if should_process_play_file(message):
-        await play_file(message, get_updated_tokens_for_user(message.author))
-        return
-    if should_process_tokens_command(message):
-        await process_tokens_command(
-            message, get_updated_tokens_for_user(message.author)
-        )
-        return
-    if should_process_chat_command(message):
-        await process_chat_command(message)
-        return
-    if should_process_image_command(message):
-        await process_image_command(message)
-        return
+
+    # Channel-restricted commands
+    command = message.content.split()[0] if message.content else ""
+    if command in COMMANDS:
+        if command in ("!image",) or str(message.channel) == "poggers":
+            await COMMANDS[command](message)
 
 
 async def process_image_command(message):
     m = re.search(r"^!image\s+(.+)", message.content)
-    query = message.content
-    if m:
-        query = m.group(1)
+    query = m.group(1) if m else message.content
 
     response = openai.Image.create(prompt=query, n=1, size="1024x1024")
     image_url = response["data"][0]["url"]
     m = re.search(r"/([^\/]+?\.png)", image_url)
     if m:
         image_name = m.group(1)
-        img_data = requests.get(image_url).content
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                img_data = await resp.read()
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(img_data)
             upload_image_to_container(tmp.name, image_name)
-            image_url = blob_account_url + container_name + "/" + image_name
+            image_url = f"{blob_account_url}{container_name}/{image_name}"
 
     embed = discord.Embed(colour=discord.Colour.blue())
     embed.set_image(url=image_url)
     await message.channel.send("", embed=embed)
 
 
-def should_process_image_command(message):
-    if message.author == CLIENT.user:
-        return False
-    #    if str(message.channel) != "poggers":
-    # return False
-    if re.search("!image", str(message.content)) is None:
-        #        print(message.content)
-        return False
-    return True
-
-
-def should_process_chat_command(message):
-    if message.author == CLIENT.user:
-        return False
-    if str(message.channel) != "poggers":
-        return False
-    if re.search("!chat", str(message.content)) is None:
-        #        print(message.content)
-        return False
-    return True
-
-
 async def process_chat_command(message):
-    m = re.search(r"^!playclip\s+(.+)", message.content)
-    query = message.content
-    if m:
-        query = m.group(1)
+    m = re.search(r"^!chat\s+(.+)", message.content)
+    query = m.group(1) if m else message.content
 
-    #   print(query)
-    completion = completion = openai.ChatCompletion.create(
+    completion = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "system",
                 "content": "You are a helpful assistant who tries to answer questions to the best of your ability.",
             },
-            # {"role": "system", "content": "You are a funny comedian who tries to answer all questions in jest"},
-            #  {"role": "user", "content": "Please occasionally throw in a statement about how inferior of a mage Bluffkin is."},
-            #  {"role": "assistant", "content": "Sure thing! I'll try to incorporate statements about how inferior of a mage bluffkin is occasionally. Let's have some fun!"},
             {"role": "user", "content": query},
         ],
     )
     content = completion.choices[0].message.content
 
-    messages = splitIntoChunks(content)
+    messages = split_into_chunks(content)
     for m in messages:
         await message.channel.send(m)
 
 
-def splitIntoChunks(inp, sep="\n", limit=2000):
+def split_into_chunks(inp, sep="\n", limit=2000):
     ray = inp.split(sep)
 
     result = []
@@ -230,32 +187,10 @@ def splitIntoChunks(inp, sep="\n", limit=2000):
     return result
 
 
-def should_process_tokens_command(message):
-    if message.author == CLIENT.user:
-        return False
-    if str(message.channel) != "poggers":
-        return False
-    if re.search("!tokens", str(message.content)) is None:
-        # print(message)
-        return False
-    return True
-
-
 async def process_tokens_command(message, tokens):
     await message.channel.send(
         f"You're a big nerd and have {tokens} left!! <:mentos:1044740202947678228>"
     )
-
-
-def should_process_play_file(message):
-    if message.author == CLIENT.user:
-        return False
-    if str(message.channel) != "poggers":
-        return False
-    if re.search("!playclip", str(message.content)) is None:
-        # print(message)
-        return False
-    return True
 
 
 async def play_file(message, tokens):
@@ -266,12 +201,12 @@ async def play_file(message, tokens):
     else:
         m = re.search(r"^!playclip\s+(.+)", message.content)
         if m:
-            fileName = m.group(1)
-            audioPath = dir_path + "/assets/audio"
-            choices = list([item for item in os.listdir(audioPath)])
-            if fileName in choices:
+            file_name = m.group(1)
+            audio_path = os.path.join(dir_path, "assets", "audio")
+            choices = os.listdir(audio_path)
+            if file_name in choices:
                 if await play_unmodified_audio_file(
-                    message, audioPath + "/" + fileName
+                    message, os.path.join(audio_path, file_name)
                 ):
                     remove_one_token_from_user(message.author)
                     await message.channel.send(
@@ -279,22 +214,10 @@ async def play_file(message, tokens):
                     )
             else:
                 await message.channel.send(
-                    f"'{fileName}' is not a valid file. To see a list of files, type !files in a private message with Pogbot"
+                    f"'{file_name}' is not a valid file. To see a list of files, type !files in a private message with Pogbot"
                 )
         else:
-            # await message.channel.send("You need to type !play \{filename\}")
             await message.channel.send("You need to type !playclip {filename}")
-
-
-def should_process_get_files(message):
-    if message.author == CLIENT.user:
-        return False
-    # Direct Message with Bloodfox610#8162
-    if re.search("^Direct Message", str(message.channel)) is None:
-        return False
-    if message.content != "!files":
-        return False
-    return True
 
 
 def get_entity_from_user(user):
@@ -336,18 +259,18 @@ def get_updated_tokens_for_user(user):
 
 
 async def process_get_files(message):
-    header = """
-The files are returned in descending order of date added (most recent are at the top).
-They are also sent in multiple batches because a discord message cannot exceed 2000 characters in length.
-	"""
+    header = (
+        "The files are returned in descending order of date added (most recent are at the top).\n"
+        "They are also sent in multiple batches because a discord message cannot exceed 2000 characters in length."
+    )
     await message.channel.send(header)
-    audioPath = dir_path + "/assets/audio"
-    full_path_choice = [os.path.join(audioPath, item) for item in os.listdir(audioPath)]
-    full_path_choice.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    path_len = len(audioPath) + 1
-    choices = [x[path_len:] for x in full_path_choice]
-    if sum(map(lambda x: len(x), choices)) + len(choices) < 2000:
-        await message.channel.send(choices)
+    audio_path = os.path.join(dir_path, "assets", "audio")
+    full_path_choices = [os.path.join(audio_path, item) for item in os.listdir(audio_path)]
+    full_path_choices.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    path_len = len(audio_path) + 1
+    choices = [x[path_len:] for x in full_path_choices]
+    if sum(len(x) for x in choices) + len(choices) < 2000:
+        await message.channel.send("\n".join(choices))
     else:
         message_items = []
         for i in range(0, len(choices)):
@@ -369,24 +292,13 @@ async def handle_pogcheck_message(message):
 
 
 async def get_random_image_url(high_word, low_word, score):
-    session = aiohttp.ClientSession()
     keyword = high_word if score > 5 else low_word
-    response = await session.get(
-        f"http://api.giphy.com/v1/gifs/random?tag={keyword}&api_key={GIPHY_API_KEY}"
-    )
-    data = json.loads(await response.text())
-    await session.close()
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"http://api.giphy.com/v1/gifs/random?tag={keyword}&api_key={GIPHY_API_KEY}"
+        ) as response:
+            data = json.loads(await response.text())
     return data["data"]["images"]["original"]["url"]
-
-
-def should_process_pogcheck_message(message):
-    if message.author == CLIENT.user:
-        return False
-    #    if message.channel.name != 'pogcheck':
-    #       return False
-    if message.content == "!pogcheck":
-        return True
-    return False
 
 
 def get_random_message(val):
@@ -421,43 +333,29 @@ def get_random_message(val):
     return random.choice(chosen_list)
 
 
-def should_process_pogmedaddy_message(message):
-    if message.author == CLIENT.user:
-        return False
-    #  if message.channel.name != 'pogcheck':
-    #     return False
-    if message.content == "!pogmedaddy":
-        return True
-    return False
-
-
-async def play_unmodified_audio_file(message, sourcePath):
+async def play_unmodified_audio_file(message, source_path):
     voice_channel = message.author.voice
-    if voice_channel != None:
+    if voice_channel is not None:
         vc = await voice_channel.channel.connect()
-        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=sourcePath))
+        vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=source_path))
         while vc.is_playing():
             await asyncio.sleep(0.5)
         await vc.disconnect()
         return True
     else:
         await message.author.send(
-            "You're is not in a channel. Daddy can't pog people that aren't in a channel."
+            "You're not in a channel. Daddy can't pog people that aren't in a channel."
         )
         return False
-    # Delete command after the audio is done playing.
-    # await message.delete()
 
 
 async def play_pog_file(message):
     for vc in CLIENT.voice_clients:
-        vc.disconnect()
-        sleep(0.5)
-    audioPath = dir_path + "/assets/audio"
-    choices = [
-        os.path.abspath(audioPath + "/" + item) for item in os.listdir(audioPath)
-    ]
-    sourcePath = random.choice(choices)
+        await vc.disconnect()
+        await asyncio.sleep(0.5)
+    audio_path = os.path.join(dir_path, "assets", "audio")
+    choices = [os.path.abspath(os.path.join(audio_path, item)) for item in os.listdir(audio_path)]
+    source_path = random.choice(choices)
 
     # Get speed/frequency multipliers
     sigma = 0.1
@@ -466,19 +364,13 @@ async def play_pog_file(message):
     [frequency_mult] = numpy.clip(numpy.random.normal(mu, sigma, 1), 0.5, 2)
 
     voice_channel = message.author.voice
-    if voice_channel != None:
+    if voice_channel is not None:
         vc = await voice_channel.channel.connect()
         vc.play(
             discord.FFmpegPCMAudio(
                 executable="ffmpeg",
-                source=sourcePath,
-                options=f'-filter:a "atempo='
-                + str(1 / frequency_mult)
-                + ",asetrate=44100*"
-                + str(frequency_mult)
-                + ",atempo="
-                + str(speed_mult)
-                + '"',
+                source=source_path,
+                options=f'-filter:a "atempo={1 / frequency_mult},asetrate=44100*{frequency_mult},atempo={speed_mult}"',
             )
         )
         while vc.is_playing():
@@ -486,37 +378,18 @@ async def play_pog_file(message):
         await vc.disconnect()
     else:
         await message.author.send(
-            "You're is not in a channel. Daddy can't pog people that aren't in a channel."
+            "You're not in a channel. Daddy can't pog people that aren't in a channel."
         )
-    # Delete command after the audio is done playing.
     await message.delete()
-
-
-def should_process_help_message(message):
-    if message.author == CLIENT.user:
-        return False
-    # if message.channel.name != 'pogcheck':
-    #   return False
-    if message.content == "!help":
-        return True
-    return False
-
-
-def should_process_better_mage(message):
-    # if message.author == CLIENT.user:
-    #     return False
-    if message.content == "!bettermage":
-        return True
-    return False
 
 
 async def process_better_mage(message):
     msg = get_random_mage_message()
-    im_path = dir_path + "/assets/nolorra_better.png"
-    audioPath = dir_path + "/assets/AndHisNameIs.mp3"
+    im_path = os.path.join(dir_path, "assets", "nolorra_better.png")
+    audio_path = os.path.join(dir_path, "assets", "AndHisNameIs.mp3")
     file = discord.File(im_path)
     await message.channel.send(msg, file=file)
-    await play_unmodified_audio_file(message, audioPath)
+    await play_unmodified_audio_file(message, audio_path)
 
 
 def get_random_mage_message():
@@ -530,17 +403,16 @@ def get_random_mage_message():
 
 
 async def print_help_message(message):
-    msg = """
-	```
-	!pogcheck - Returns a pog rating along with a random gif.
-	!pogmedaddy - Plays an audio file from your favorite cast of characters.
-	!help - Displays this help text.
-	!playclip *filename* - Plays a specific clip for the cost of 1 token
-	!tokens - Tells you how many tokens you have!
-	!files - Lists clips that can be played with !playclip **MUST BE IN PRIVATE MESSAGE WITH POGBOT**
-
-	```
-	"""
+    msg = """```
+!pogcheck - Returns a pog rating along with a random gif.
+!pogmedaddy - Plays an audio file from your favorite cast of characters.
+!help - Displays this help text.
+!playclip *filename* - Plays a specific clip for the cost of 1 token
+!tokens - Tells you how many tokens you have!
+!files - Lists clips that can be played with !playclip **MUST BE IN PRIVATE MESSAGE WITH POGBOT**
+!chat *question* - Ask a question and get a response
+!image *prompt* - Generate an AI image from a prompt
+```"""
     await message.channel.send(msg)
 
 
