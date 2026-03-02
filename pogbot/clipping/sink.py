@@ -78,21 +78,26 @@ class RollingBufferSink(AudioSink):
     def _mix_range(self, start_time, end_time):
         """Mix per-user audio into sequential frames for the given time range.
 
-        Sums contributions in int32 to avoid the cumulative clipping artifacts
-        caused by iterative audioop.add, then soft-limits back to int16.
+        Each user contributes at most one frame per time slot (last-write
+        wins) to prevent amplitude doubling from network jitter.  Sums
+        contributions across users in int32, then soft-limits back to int16.
         """
         num_frames = max(1, round((end_time - start_time) * 1000 / FRAME_MS))
         samples_per_frame = FRAME_BYTES // SAMPLE_WIDTH
-        mixed = [np.zeros(samples_per_frame, dtype=np.int32) for _ in range(num_frames)]
+        mixed = np.zeros((num_frames, samples_per_frame), dtype=np.int32)
 
         for buf in self._user_buffers.values():
+            # Deduplicate: keep only the last frame per slot for this user
+            user_slots = {}
             for ts, pcm in buf:
                 if ts < start_time or ts >= end_time:
                     continue
-                idx = min(int((ts - start_time) * 1000 / FRAME_MS), num_frames - 1)
+                idx = min(round((ts - start_time) * 1000 / FRAME_MS), num_frames - 1)
+                user_slots[idx] = pcm
+            for idx, pcm in user_slots.items():
                 mixed[idx] += np.frombuffer(pcm, dtype=np.int16).astype(np.int32)
 
-        return [_soft_limit(frame).tobytes() for frame in mixed]
+        return [_soft_limit(mixed[i]).tobytes() for i in range(num_frames)]
 
     def _to_wav(self, frames):
         """Encode a list of PCM frames as WAV bytes."""
