@@ -106,37 +106,51 @@ class RollingBufferSink(AudioSink):
             self._user_buffers[uid].append((now, pcm))
 
     def _mix_range(self, start_time, end_time):
-        """Mix per-user audio into sequential frames for the given time range.
+        """Mix per-user audio at sample-level precision.
 
-        Each user contributes at most one frame per time slot (last-write
-        wins) to prevent amplitude doubling from network jitter.  Sums
-        contributions across users in int32, then soft-limits back to int16.
+        Each frame is placed at its exact sample offset derived from its
+        timestamp, eliminating the 20 ms slot-quantisation that caused
+        jitter artifacts.  Soft limiting is applied once to the entire
+        continuous signal so the compressor can't pump between frames.
         """
-        num_frames = max(1, round((end_time - start_time) * 1000 / FRAME_MS))
-        samples_per_frame = FRAME_BYTES // SAMPLE_WIDTH
-        mixed = np.zeros((num_frames, samples_per_frame), dtype=np.int32)
+        total_samples = max(1, round((end_time - start_time) * SAMPLE_RATE)) * CHANNELS
+        samples_per_frame = FRAME_BYTES // SAMPLE_WIDTH  # 1920
+        mixed = np.zeros(total_samples, dtype=np.int32)
 
         for buf in self._user_buffers.values():
-            # Deduplicate: keep only the last frame per slot for this user
-            user_slots = {}
-            for ts, pcm in buf:
-                if ts < start_time or ts >= end_time:
-                    continue
-                idx = min(round((ts - start_time) * 1000 / FRAME_MS), num_frames - 1)
-                user_slots[idx] = pcm
+            frames = [(ts, pcm) for ts, pcm in buf
+                      if start_time <= ts < end_time]
+            if not frames:
+                continue
 
-            # Fill single-frame jitter gaps by repeating the previous frame
-            if len(user_slots) > 1:
-                sorted_idxs = sorted(user_slots)
-                for i in range(len(sorted_idxs) - 1):
-                    gap = sorted_idxs[i + 1] - sorted_idxs[i]
-                    if gap == 2:
-                        user_slots[sorted_idxs[i] + 1] = user_slots[sorted_idxs[i]]
+            # Place each frame at its exact sample position.
+            # Consecutive frames from the same user are spaced at exactly
+            # one frame width to eliminate jitter; only genuine pauses
+            # (>30 ms gap) advance the write cursor by the real gap.
+            first_offset = round((frames[0][0] - start_time) * SAMPLE_RATE) * CHANNELS
+            write_pos = max(0, first_offset)
 
-            for idx, pcm in user_slots.items():
-                mixed[idx] += np.frombuffer(pcm, dtype=np.int16).astype(np.int32)
+            for i, (ts, pcm) in enumerate(frames):
+                if i > 0:
+                    gap_sec = ts - frames[i - 1][0]
+                    if gap_sec > 0.030:
+                        # Real pause — jump the cursor forward
+                        write_pos = max(0, round((ts - start_time) * SAMPLE_RATE) * CHANNELS)
+                    else:
+                        # Normal frame — advance by exactly one frame
+                        write_pos += samples_per_frame
 
-        return [_soft_limit(mixed[i]).tobytes() for i in range(num_frames)]
+                samples = np.frombuffer(pcm, dtype=np.int16).astype(np.int32)
+                end = min(write_pos + len(samples), total_samples)
+                count = end - write_pos
+                if count > 0 and write_pos >= 0:
+                    mixed[write_pos:end] += samples[:count]
+
+        # One-pass soft limiting on the full signal avoids per-frame pumping
+        limited = _soft_limit(mixed)
+
+        return [limited[i:i + samples_per_frame].tobytes()
+                for i in range(0, len(limited), samples_per_frame)]
 
     def _to_wav(self, frames):
         """Encode a list of PCM frames as WAV bytes."""
