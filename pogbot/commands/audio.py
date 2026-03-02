@@ -18,6 +18,8 @@ _listening_sessions = {}
 
 INACTIVITY_TIMEOUT = 300  # 5 minutes in seconds
 INACTIVITY_CHECK_INTERVAL = 30  # check every 30 seconds
+RECOVERY_CHECK_INTERVAL = 10  # seconds between recovery checks
+MAX_RECOVERY_ATTEMPTS = 5
 
 
 async def start_listening(message):
@@ -41,6 +43,8 @@ async def start_listening(message):
     asyncio.create_task(run_clip_detector(guild_id, get_listening_session))
     # Start the inactivity monitor
     asyncio.create_task(_run_inactivity_monitor(guild_id))
+    # Start the voice recovery monitor (handles OpusError crashes)
+    asyncio.create_task(_run_voice_recovery(guild_id))
 
     await message.channel.send("🎙️ Listening! Say **\"clip that\"** to save a clip, or type `!leave` to stop.")
 
@@ -64,8 +68,58 @@ def get_listening_session(guild_id):
     return _listening_sessions.get(guild_id)
 
 
+async def _run_voice_recovery(guild_id):
+    """Auto-reconnect when the voice_recv thread crashes (e.g. OpusError)."""
+    recovery_attempts = 0
+
+    while True:
+        await asyncio.sleep(RECOVERY_CHECK_INTERVAL)
+
+        session = _listening_sessions.get(guild_id)
+        if session is None:
+            return
+
+        vc, sink, text_channel = session
+
+        # Only recover if the receive thread has actually died
+        if vc.is_listening():
+            recovery_attempts = 0
+            continue
+
+        # Receive thread is dead — attempt recovery
+        recovery_attempts += 1
+        if recovery_attempts > MAX_RECOVERY_ATTEMPTS:
+            print(f"[recovery] guild={guild_id} max attempts reached, giving up")
+            return
+
+        print(f"[recovery] guild={guild_id} receive thread died, "
+              f"attempting reconnect ({recovery_attempts}/{MAX_RECOVERY_ATTEMPTS})")
+
+        channel = vc.channel
+        try:
+            vc.stop()
+            sink.cleanup()
+            await vc.disconnect()
+        except Exception as e:
+            print(f"[recovery] guild={guild_id} disconnect error: {e}")
+
+        await asyncio.sleep(2)
+
+        try:
+            new_sink = RollingBufferSink()
+            new_vc = await channel.connect(cls=voice_recv.VoiceRecvClient)
+            new_vc.listen(new_sink)
+            _listening_sessions[guild_id] = (new_vc, new_sink, text_channel)
+            print(f"[recovery] guild={guild_id} reconnected successfully")
+        except Exception as e:
+            print(f"[recovery] guild={guild_id} reconnect failed: {e}")
+            _listening_sessions.pop(guild_id, None)
+            return
+
+
 async def _run_inactivity_monitor(guild_id):
     """Auto-disconnect after 5 minutes of inactivity (no humans or silence)."""
+    no_humans_since = None
     while True:
         await asyncio.sleep(INACTIVITY_CHECK_INTERVAL)
 
@@ -79,10 +133,20 @@ async def _run_inactivity_monitor(guild_id):
         humans = [m for m in vc.channel.members if not m.bot]
         no_humans = len(humans) == 0
 
-        # Check if audio has been received recently
-        silence = (time.monotonic() - sink.last_write_time) > INACTIVITY_TIMEOUT
+        # Track how long channel has been empty
+        if no_humans:
+            if no_humans_since is None:
+                no_humans_since = time.monotonic()
+            empty_too_long = (time.monotonic() - no_humans_since) > INACTIVITY_TIMEOUT
+        else:
+            no_humans_since = None
+            empty_too_long = False
 
-        if no_humans or silence:
+        # Check if audio has been received recently (only matters when no humans)
+        silence_elapsed = time.monotonic() - sink.last_write_time
+        silence = no_humans and silence_elapsed > INACTIVITY_TIMEOUT
+
+        if empty_too_long or silence:
             session = _listening_sessions.pop(guild_id, None)
             if session is None:
                 return
@@ -90,7 +154,11 @@ async def _run_inactivity_monitor(guild_id):
             vc.stop()
             sink.cleanup()
             await vc.disconnect()
-            reason = "no one in the channel" if no_humans else "silence"
+            if empty_too_long:
+                reason = "no one in the channel"
+            else:
+                reason = f"silence ({silence_elapsed:.0f}s since last audio)"
+            print(f"[inactivity] guild={guild_id} reason={reason} no_humans={no_humans} silence_elapsed={silence_elapsed:.0f}s")
             await text_channel.send(f"👋 Left voice due to {reason} (5 min timeout).")
             return
 

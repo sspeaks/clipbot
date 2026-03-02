@@ -21,28 +21,19 @@ ROAST_SYSTEM_PROMPT = (
 )
 
 
+def _find_member_by_name(guild, name):
+    """Case-insensitive lookup of a guild member by display name or username."""
+    lower = name.lower()
+    for member in guild.members:
+        if member.display_name.lower() == lower or member.name.lower() == lower:
+            return member
+    return None
+
+
 async def process_roast_command(message):
     raw = message.content[len("!roast"):].strip()
     if not raw:
-        await message.channel.send("Usage: `!roast @user [optional context]`")
-        return
-
-    # Use Discord's parsed mentions if available, otherwise parse plain text
-    if message.mentions:
-        target_member = message.mentions[0]
-        target_name = target_member.display_name
-        # Strip the mention from raw to get context
-        context = re.sub(r"<@!?\d+>", "", raw, count=1).strip().strip('\u201c\u201d"\'')
-    else:
-        parts = raw.split(maxsplit=1)
-        target_name = parts[0].lstrip("@")
-        context = parts[1].strip().strip('\u201c\u201d"\'') if len(parts) > 1 else ""
-
-    tokens = get_updated_tokens_for_user(message.author)
-    if tokens < ROAST_TOKEN_COST:
-        await message.channel.send(
-            f"You need {ROAST_TOKEN_COST} tokens to roast someone but only have {tokens} <:mentos:1044740202947678228>"
-        )
+        await message.channel.send("Usage: `!roast <name> [optional context]`")
         return
 
     voice_state, guild = _find_user_voice_channel(message.author)
@@ -52,13 +43,34 @@ async def process_roast_command(message):
         )
         return
 
+    # Use Discord's parsed mentions if available, otherwise look up by name
+    if message.mentions:
+        target_member = message.mentions[0]
+        target_name = target_member.display_name
+        # Strip the mention from raw to get context
+        context = re.sub(r"<@!?\d+>", "", raw, count=1).strip().strip('\u201c\u201d"\'')
+    else:
+        parts = raw.split(maxsplit=1)
+        search_name = parts[0].lstrip("@")
+        context = parts[1].strip().strip('\u201c\u201d"\'') if len(parts) > 1 else ""
+        target_member = _find_member_by_name(guild, search_name)
+        target_name = target_member.display_name if target_member else search_name
+
+    tokens = get_updated_tokens_for_user(message.author)
+    if tokens < ROAST_TOKEN_COST:
+        await message.channel.send(
+            f"You need {ROAST_TOKEN_COST} tokens to roast someone but only have {tokens} <:mentos:1044740202947678228>"
+        )
+        return
+
     user_prompt = f"Roast {target_name}."
     if context:
         user_prompt += f" Context: {context}"
 
-    # Generate the roast text via ChatGPT
+    # Generate the roast text via ChatGPT (run in thread to avoid blocking)
     try:
-        completion = openai.ChatCompletion.create(
+        completion = await asyncio.to_thread(
+            openai.ChatCompletion.create,
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": ROAST_SYSTEM_PROMPT},

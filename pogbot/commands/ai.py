@@ -1,3 +1,4 @@
+import asyncio
 import re
 import tempfile
 
@@ -13,7 +14,9 @@ async def process_image_command(message):
     m = re.search(r"^!image\s+(.+)", message.content)
     query = m.group(1) if m else message.content
 
-    response = openai.Image.create(prompt=query, n=1, size="1024x1024")
+    response = await asyncio.to_thread(
+        openai.Image.create, prompt=query, n=1, size="1024x1024"
+    )
     image_url = response["data"][0]["url"]
     m = re.search(r"/([^\/]+?\.png)", image_url)
     if m:
@@ -35,7 +38,8 @@ async def process_chat_command(message):
     m = re.search(r"^!chat\s+(.+)", message.content)
     query = m.group(1) if m else message.content
 
-    completion = openai.ChatCompletion.create(
+    completion = await asyncio.to_thread(
+        openai.ChatCompletion.create,
         model="gpt-3.5-turbo",
         messages=[
             {
