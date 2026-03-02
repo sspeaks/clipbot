@@ -41,6 +41,29 @@ def _soft_limit(samples):
     return np.clip(np.copysign(compressed, fsamples), -MAX_VAL, MAX_VAL).astype(np.int16)
 
 
+# 5 ms fade expressed in stereo samples
+_FADE_SAMPLES = SAMPLE_RATE * CHANNELS * 5 // 1000  # 480 samples = 5 ms
+
+
+def _fade_edges(frames):
+    """Apply a 5 ms linear fade-in and fade-out to prevent boundary clicks."""
+    if not frames:
+        return frames
+
+    # Build a contiguous int16 array from all frames
+    pcm = np.concatenate([np.frombuffer(f, dtype=np.int16) for f in frames])
+    n = min(_FADE_SAMPLES, len(pcm) // 2)
+    if n > 0:
+        ramp = np.linspace(0.0, 1.0, n, dtype=np.float32)
+        pcm[:n] = (pcm[:n].astype(np.float32) * ramp).astype(np.int16)
+        pcm[-n:] = (pcm[-n:].astype(np.float32) * ramp[::-1]).astype(np.int16)
+
+    # Re-split into frame-sized byte chunks
+    samples_per_frame = FRAME_BYTES // SAMPLE_WIDTH
+    return [pcm[i:i + samples_per_frame].tobytes()
+            for i in range(0, len(pcm), samples_per_frame)]
+
+
 class RollingBufferSink(AudioSink):
     """Maintains a rolling 30-second buffer of mixed audio from all users.
 
@@ -64,7 +87,14 @@ class RollingBufferSink(AudioSink):
 
         # Normalize to exactly one frame
         if len(pcm) < FRAME_BYTES:
-            pcm = pcm + b"\x00" * (FRAME_BYTES - len(pcm))
+            # Extend with the last sample to avoid a click from zero-padding
+            sample_size = SAMPLE_WIDTH * CHANNELS  # 4 bytes per stereo sample
+            if len(pcm) >= sample_size:
+                last_sample = pcm[-sample_size:]
+                pad_len = FRAME_BYTES - len(pcm)
+                pcm = pcm + (last_sample * (pad_len // sample_size + 1))[:pad_len]
+            else:
+                pcm = pcm + b"\x00" * (FRAME_BYTES - len(pcm))
         elif len(pcm) > FRAME_BYTES:
             pcm = pcm[:FRAME_BYTES]
 
@@ -94,6 +124,15 @@ class RollingBufferSink(AudioSink):
                     continue
                 idx = min(round((ts - start_time) * 1000 / FRAME_MS), num_frames - 1)
                 user_slots[idx] = pcm
+
+            # Fill single-frame jitter gaps by repeating the previous frame
+            if len(user_slots) > 1:
+                sorted_idxs = sorted(user_slots)
+                for i in range(len(sorted_idxs) - 1):
+                    gap = sorted_idxs[i + 1] - sorted_idxs[i]
+                    if gap == 2:
+                        user_slots[sorted_idxs[i] + 1] = user_slots[sorted_idxs[i]]
+
             for idx, pcm in user_slots.items():
                 mixed[idx] += np.frombuffer(pcm, dtype=np.int16).astype(np.int32)
 
@@ -123,7 +162,10 @@ class RollingBufferSink(AudioSink):
             if earliest is None:
                 return None
 
-            return self._to_wav(self._mix_range(earliest, latest + FRAME_MS / 1000))
+            frames = self._mix_range(earliest, latest + FRAME_MS / 1000)
+
+            # Apply short fade-in/out to prevent boundary clicks
+            return self._to_wav(_fade_edges(frames))
 
     def get_last_n_seconds_wav(self, seconds=5):
         """Return the last N seconds of audio as WAV bytes (for Whisper)."""
