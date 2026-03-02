@@ -1,9 +1,10 @@
-import audioop
 import io
 import threading
 import time
 import wave
 from collections import deque
+
+import numpy as np
 
 from discord.ext.voice_recv import AudioSink
 from discord.opus import Decoder as OpusDecoder
@@ -15,6 +16,29 @@ FRAME_MS = 20
 FRAME_BYTES = SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * FRAME_MS // 1000  # 3840
 BUFFER_SECONDS = 30
 MAX_FRAMES = BUFFER_SECONDS * 1000 // FRAME_MS  # 1500
+
+
+def _soft_limit(samples):
+    """Soft-limit int32 samples to int16 range using tanh compression.
+
+    Applies transparent compression above a knee threshold so that
+    overlapping voices are attenuated smoothly instead of hard-clipped.
+    """
+    KNEE = 24000
+    MAX_VAL = 32767
+    headroom = float(MAX_VAL - KNEE)
+
+    if np.max(np.abs(samples)) <= KNEE:
+        return samples.astype(np.int16)
+
+    fsamples = samples.astype(np.float64)
+    magnitude = np.abs(fsamples)
+    compressed = np.where(
+        magnitude > KNEE,
+        KNEE + headroom * np.tanh((magnitude - KNEE) / headroom),
+        magnitude,
+    )
+    return np.clip(np.copysign(compressed, fsamples), -MAX_VAL, MAX_VAL).astype(np.int16)
 
 
 class RollingBufferSink(AudioSink):
@@ -52,19 +76,23 @@ class RollingBufferSink(AudioSink):
             self._user_buffers[uid].append((now, pcm))
 
     def _mix_range(self, start_time, end_time):
-        """Mix per-user audio into sequential frames for the given time range."""
+        """Mix per-user audio into sequential frames for the given time range.
+
+        Sums contributions in int32 to avoid the cumulative clipping artifacts
+        caused by iterative audioop.add, then soft-limits back to int16.
+        """
         num_frames = max(1, round((end_time - start_time) * 1000 / FRAME_MS))
-        silence = b"\x00" * FRAME_BYTES
-        mixed = [bytearray(silence) for _ in range(num_frames)]
+        samples_per_frame = FRAME_BYTES // SAMPLE_WIDTH
+        mixed = [np.zeros(samples_per_frame, dtype=np.int32) for _ in range(num_frames)]
 
         for buf in self._user_buffers.values():
             for ts, pcm in buf:
                 if ts < start_time or ts >= end_time:
                     continue
                 idx = min(int((ts - start_time) * 1000 / FRAME_MS), num_frames - 1)
-                mixed[idx] = audioop.add(bytes(mixed[idx]), pcm, SAMPLE_WIDTH)
+                mixed[idx] += np.frombuffer(pcm, dtype=np.int16).astype(np.int32)
 
-        return mixed
+        return [_soft_limit(frame).tobytes() for frame in mixed]
 
     def _to_wav(self, frames):
         """Encode a list of PCM frames as WAV bytes."""
