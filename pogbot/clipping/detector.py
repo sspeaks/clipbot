@@ -1,6 +1,7 @@
 import asyncio
 import io
 import os
+import subprocess
 import time
 import uuid
 
@@ -75,7 +76,25 @@ async def run_clip_detector(guild_id, get_session_fn):
             with open(clip_path, "wb") as f:
                 f.write(full_wav)
 
-            pending_clips[clip_id] = {"path": clip_path, "text_channel": text_channel}
+            # Create a compressed OGG for fast browser preview (~15x smaller)
+            ogg_path = os.path.join(clip_dir, f"{clip_id}.ogg")
+            try:
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["ffmpeg", "-y", "-i", clip_path,
+                     "-c:a", "libopus", "-b:a", "96k", "-ac", "1",
+                     ogg_path],
+                    check=True, capture_output=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"OGG encode failed: {e.stderr.decode()}")
+                ogg_path = None
+
+            pending_clips[clip_id] = {
+                "path": clip_path,
+                "ogg_path": ogg_path,
+                "text_channel": text_channel,
+            }
 
             await text_channel.send(
                 f"🎬 **Clip captured!** Trim it here: {TRIMMER_BASE_URL}/trim/{clip_id}"

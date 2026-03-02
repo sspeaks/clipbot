@@ -22,7 +22,18 @@ async def handle_trim_page(request):
 async def handle_get_audio(request):
     clip_id = request.match_info["clip_id"]
     clip_info = pending_clips.get(clip_id)
-    if clip_info is None or not os.path.exists(clip_info["path"]):
+    if clip_info is None:
+        return web.Response(text="Clip not found.", status=404)
+
+    # Prefer compressed OGG for fast browser download, fall back to WAV
+    ogg_path = clip_info.get("ogg_path")
+    if ogg_path and os.path.exists(ogg_path):
+        return web.FileResponse(ogg_path, headers={
+            "Content-Type": "audio/ogg",
+            "Access-Control-Allow-Origin": "*",
+        })
+
+    if not os.path.exists(clip_info["path"]):
         return web.Response(text="Clip not found.", status=404)
 
     return web.FileResponse(clip_info["path"], headers={
@@ -74,8 +85,11 @@ async def handle_post_trim(request):
     except subprocess.CalledProcessError as e:
         return web.json_response({"error": f"ffmpeg error: {e.stderr.decode()}"}, status=500)
 
-    # Clean up temp file
+    # Clean up temp files
     os.remove(clip_path)
+    ogg_path = clip_info.get("ogg_path")
+    if ogg_path and os.path.exists(ogg_path):
+        os.remove(ogg_path)
     del pending_clips[clip_id]
 
     # Notify the Discord channel where !listen was typed
