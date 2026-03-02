@@ -164,19 +164,19 @@ class RollingBufferSink(AudioSink):
         return buf.getvalue()
 
     def snapshot_wav(self):
-        """Return the current buffer contents as WAV bytes."""
+        """Return the last BUFFER_SECONDS of audio as WAV bytes."""
         with self._lock:
-            earliest = None
             latest = None
             for buf in self._user_buffers.values():
                 if buf:
-                    earliest = buf[0][0] if earliest is None else min(earliest, buf[0][0])
                     latest = buf[-1][0] if latest is None else max(latest, buf[-1][0])
 
-            if earliest is None:
+            if latest is None:
                 return None
 
-            frames = self._mix_range(earliest, latest + FRAME_MS / 1000)
+            # Clamp to BUFFER_SECONDS so the clip is never longer than 30s
+            start = latest - BUFFER_SECONDS
+            frames = self._mix_range(start, latest + FRAME_MS / 1000)
 
             # Apply short fade-in/out to prevent boundary clicks
             return self._to_wav(_fade_edges(frames))
