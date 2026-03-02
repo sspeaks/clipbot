@@ -168,11 +168,15 @@ endInput.addEventListener("change", () => {
   updateSelection();
 });
 
-previewBtn.addEventListener("click", () => {
+previewBtn.addEventListener("click", async () => {
+  if (audioContext.state === "suspended") await audioContext.resume();
   if (sourceNode) { sourceNode.stop(); }
   sourceNode = audioContext.createBufferSource();
   sourceNode.buffer = audioBuffer;
   sourceNode.connect(audioContext.destination);
+
+  previewBtn.textContent = "⏹ Stop";
+  sourceNode.onended = () => { previewBtn.textContent = "▶ Preview"; };
   sourceNode.start(0, startSec, endSec - startSec);
 });
 
