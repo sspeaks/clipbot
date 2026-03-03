@@ -87,7 +87,8 @@ async def process_roast_command(message):
     tmp_path = os.path.join(dir_path, "temp_clips", f"roast_{message.id}.mp3")
 
     try:
-        await _generate_tts(roast_text, voice, tmp_path)
+        await _generate_tts(roast_text, voice, tmp_path,
+                            instructions="Deliver this like a stand-up comedian roasting a friend — confident, punchy, with dramatic pauses and attitude.")
     except Exception as e:
         await message.channel.send(f"TTS generation failed: {e}")
         return

@@ -10,7 +10,8 @@ from pogbot.config import CLIENT, OPEN_AI_API, dir_path
 from pogbot.storage import get_updated_tokens_for_user, remove_one_token_from_user
 from pogbot.commands.audio import _listening_sessions
 
-TTS_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+TTS_VOICES = ["alloy", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"]
+TTS_MODEL = "gpt-4o-mini-tts"
 MAX_MESSAGE_LENGTH = 500
 TTS_API_URL = "https://api.openai.com/v1/audio/speech"
 
@@ -24,13 +25,15 @@ def _find_user_voice_channel(user):
     return None, None
 
 
-async def _generate_tts(text, voice, output_path):
+async def _generate_tts(text, voice, output_path, instructions=None):
     """Call OpenAI TTS API directly via HTTP and save the result."""
     headers = {
         "Authorization": f"Bearer {OPEN_AI_API}",
         "Content-Type": "application/json",
     }
-    payload = {"model": "tts-1", "voice": voice, "input": text}
+    payload = {"model": TTS_MODEL, "voice": voice, "input": text}
+    if instructions:
+        payload["instructions"] = instructions
     async with aiohttp.ClientSession() as session:
         async with session.post(TTS_API_URL, headers=headers, json=payload) as resp:
             if resp.status != 200:
@@ -71,7 +74,8 @@ async def process_say_command(message):
     tmp_path = os.path.join(dir_path, "temp_clips", f"tts_{message.id}.mp3")
 
     try:
-        await _generate_tts(text, voice, tmp_path)
+        await _generate_tts(text, voice, tmp_path,
+                            instructions="Speak naturally and expressively, like a real person in casual conversation.")
     except Exception as e:
         await message.channel.send(f"TTS generation failed: {e}")
         return
