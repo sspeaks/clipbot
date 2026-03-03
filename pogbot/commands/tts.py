@@ -75,7 +75,7 @@ async def process_say_command(message):
 
     try:
         await _generate_tts(text, voice, tmp_path,
-                            instructions="Speak naturally and expressively, like a real person in casual conversation.")
+                            instructions="Speak with an overly excited, hyper-enthusiastic tone — like you just won the lottery and can't contain yourself.")
     except Exception as e:
         await message.channel.send(f"TTS generation failed: {e}")
         return
