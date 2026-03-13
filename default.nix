@@ -6,17 +6,17 @@
 , ...
 }:
 let
-  setuptools = pkgs.python311Packages.setuptools;
-  auzre-data-tables = pkgs.python311Packages.buildPythonPackage rec {
+  setuptools = pkgs.python312Packages.setuptools;
+  auzre-data-tables = pkgs.python312Packages.buildPythonPackage rec {
     #  To build with setuptools as before, set `pyproject = true` and `build-system = [ setuptools ]`.`
     pname = "azure-data-tables";
     version = "12.4.0";
-    src = pkgs.python311Packages.fetchPypi {
+    src = pkgs.python312Packages.fetchPypi {
       inherit pname version;
       extension = "zip";
       sha256 = "sha256-3V/I3pHi+JCO+kxkyn9jz4OzBoqbpCYpjeO1QTnpZlw=";
     };
-    propagatedBuildInputs = with pkgs.python311Packages; [
+    propagatedBuildInputs = with pkgs.python312Packages; [
       azure-core
       msrest
     ];
@@ -27,15 +27,15 @@ let
     pythonImportsCheck = [ "azure.data.tables" ];
   };
 
-  azure-storage-blob = pkgs.python311Packages.buildPythonPackage rec {
+  azure-storage-blob = pkgs.python312Packages.buildPythonPackage rec {
     pname = "azure-storage-blob";
     version = "12.4.0";
-    src = pkgs.python311Packages.fetchPypi {
+    src = pkgs.python312Packages.fetchPypi {
       inherit pname version;
       extension = "zip";
       sha256 = "sha256-lqCbL/I012I2Z+EALJFrW1YuWCnqYrQXUwn2WrBqA+g=";
     };
-    propagatedBuildInputs = with pkgs.python311Packages; [
+    propagatedBuildInputs = with pkgs.python312Packages; [
       azure-core
       msrest
       cryptography
@@ -47,17 +47,17 @@ let
     pythonImportsCheck = [ "azure.storage.blob" ];
   };
 
-  discordpy = pkgs.python311Packages.buildPythonPackage rec {
+  discordpy = pkgs.python312Packages.buildPythonPackage rec {
     pname = "discord_py";
     version = "2.6.0";
 
-    src = pkgs.python311Packages.fetchPypi {
+    src = pkgs.python312Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
       sha256 = "8aa0f017524734653e6ddddb7878e1cdf8c3868bd7d1a386c36cd8373e5fba02";
     };
 
-    propagatedBuildInputs = with pkgs.python311Packages; [
+    propagatedBuildInputs = with pkgs.python312Packages; [
       aiohttp
       pynacl
     ];
@@ -70,17 +70,17 @@ let
     pythonImportsCheck = [ "discord" ];
   };
 
-  discord-ext-voice-recv = pkgs.python311Packages.buildPythonPackage rec {
+  discord-ext-voice-recv = pkgs.python312Packages.buildPythonPackage rec {
     pname = "discord_ext_voice_recv";
     version = "0.5.2a179";
 
-    src = pkgs.python311Packages.fetchPypi {
+    src = pkgs.python312Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
       sha256 = "6cb8f5ff60c3885020e5ebd879323dc97ebb0745788f3778a14ef31810f848a8";
     };
 
-    propagatedBuildInputs = [ discordpy ] ++ (with pkgs.python311Packages; [ pynacl ]);
+    propagatedBuildInputs = [ discordpy ] ++ (with pkgs.python312Packages; [ pynacl ]);
     pyproject = true;
     build-system = [ setuptools ];
 
@@ -89,17 +89,17 @@ let
     pythonImportsCheck = [ "discord.ext.voice_recv" ];
   };
 
-  openai = pkgs.python311Packages.buildPythonPackage rec {
+  openai = pkgs.python312Packages.buildPythonPackage rec {
     pname = "openai";
     version = "0.27.1";
 
-    src = pkgs.python311Packages.fetchPypi {
+    src = pkgs.python312Packages.fetchPypi {
       inherit pname version;
       extension = "tar.gz";
       sha256 = "11a8eb9b609653295be6cc67febecd5189f17b22ef015462c5003d8959567fd7";
     };
 
-    propagatedBuildInputs = with pkgs.python311Packages; [ aiohttp requests tqdm ];
+    propagatedBuildInputs = with pkgs.python312Packages; [ aiohttp requests tqdm ];
     pyproject = true;
     build-system = [ setuptools ];
 
@@ -108,7 +108,7 @@ let
     pythonImportsCheck = [ "openai" ];
   };
 
-  python = pkgs.python311.withPackages (ps: (with ps; [
+  python = pkgs.python312.withPackages (ps: (with ps; [
     python-dotenv
     aiohttp
     pynacl
